@@ -1,8 +1,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Animation/AnimInstance.h"
 #include "Data/ES1DirectionalAnimations.h"
+#include "Tags/ES1WeaponTags.h"
 #include "ES1LayerAnimInstance.generated.h"
 
 class UES1AnimInstance;
@@ -17,6 +19,9 @@ class ES1_API UES1LayerAnimInstance : public UAnimInstance
 	
 protected:
 	TObjectPtr<UES1AnimInstance> MainAnimInstance;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Anim|Weapon")
+	FGameplayTag CurrentWeaponType = ES1WeaponTags::Weapon_Type_Unarmed;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	EES1MovementGate MovementGate;

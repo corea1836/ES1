@@ -1,6 +1,5 @@
 #include "Components/ES1AttributeComponent.h"
 
-#include "Data/ES1MovementGateData.h"
 
 UES1AttributeComponent::UES1AttributeComponent()
 {

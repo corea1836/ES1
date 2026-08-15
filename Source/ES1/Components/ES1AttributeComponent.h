@@ -19,6 +19,12 @@ protected:
 
 protected:
 	virtual void BeginPlay() override;
+	
+private:
+	// UPROPERTY(Transient, BlueprintReadOnly, ReplicatedUsing=OnRep_CurrentWeapon, meta=(AllowPrivateAccess=true))
+	// TObjectPtr<AES1Weapon> CurrentWeapon;
+	
+
 
 public:	
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

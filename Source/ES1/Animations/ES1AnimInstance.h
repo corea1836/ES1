@@ -3,7 +3,8 @@
 #include "CoreMinimal.h"
 #include "ES1Define.h"
 #include "Animation/AnimInstance.h"
-#include "Data/ES1WeaponLocomotionData.h"
+#include "Characters/ES1Character.h"
+#include "Tags/ES1WeaponTags.h"
 #include "ES1AnimInstance.generated.h"
 
 class UES1WeaponLocomotionData;
@@ -14,16 +15,24 @@ class ES1_API UES1AnimInstance : public UAnimInstance
 	GENERATED_BODY()
 	friend class UES1LayerAnimInstance;
 	
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="References")
-	TObjectPtr<AES1Character> Character;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="References")
-	TObjectPtr<UCharacterMovementComponent> MovementComponent;
+public:
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon Data")
-	EES1EquipmentType SelectedEquipment;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<AES1Character> Character;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<UCharacterMovementComponent> CMC;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<UES1CombatComponent> CombatComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<AES1Weapon> CurrentWeapon;
+	
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Anim|Weapon")
+	FGameplayTag CurrentWeaponType = ES1WeaponTags::Weapon_Type_Unarmed;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	EES1MovementGate MovementGate;
@@ -45,9 +54,6 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
 	bool bUseCrouchRifleUpperBody;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Locomotion", meta=(AllowPrivateAccess=true))
-	TObjectPtr<UES1WeaponLocomotionData> EquippedWeaponLocomotionData;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	FVector Velocity;
@@ -177,10 +183,6 @@ public:
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	
 public:
-	FORCEINLINE TSubclassOf<UAnimInstance> GetEquippedWeaponLocomotion(const EES1EquipmentType weaponEnum)
-	{
-		return EquippedWeaponLocomotionData->GetAnimInstanceGroup(weaponEnum)->AnimInstance;
-	}
 	
 	void CalculateLocomotionDirection();
 	float CalculateDirectionFactor();

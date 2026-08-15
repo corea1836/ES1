@@ -23,6 +23,8 @@ void UES1LayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	if (MainAnimInstance)
 	{
+		CurrentWeaponType = MainAnimInstance->CurrentWeaponType;
+		
 		MovementGate = MainAnimInstance->MovementGate;
 		VelocityLocomotionAngle = MainAnimInstance->VelocityLocomotionAngle;
 		AccelerationLocomotionAngle = MainAnimInstance->AccelerationLocomotionAngle;

@@ -3,15 +3,6 @@
 #include "CoreMinimal.h"
 
 UENUM(BlueprintType)
-enum class EES1EquipmentType : uint8
-{
-	None,
-	UnArmed,
-	Pistol,
-	Rifle,
-};
-
-UENUM(BlueprintType)
 enum class EES1MovementGate : uint8
 {
 	Walking,

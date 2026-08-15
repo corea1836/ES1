@@ -1,22 +1,14 @@
 #include "Components/ES1CombatComponent.h"
 
 #include "ES1GameplayTags.h"
-#include "Equipments/ES1Weapon.h"
+#include "Characters/ES1Character.h"
+#include "Data/ES1WeaponData.h"
 #include "GameFramework/Character.h"
+#include "Net/UnrealNetwork.h"
 
 UES1CombatComponent::UES1CombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
-}
-
-void UES1CombatComponent::BeginPlay()
-{
-	Super::BeginPlay();
-	
-	PrimaryWeapon = Spawn(PrimaryWeaponClass);
-	SecondaryWeapon = Spawn(SecondaryWeaponClass);
-	SideWeapon = Spawn(SideWeaponClass);
-	
 }
 
 void UES1CombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -24,95 +16,143 @@ void UES1CombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-AES1Equipment* UES1CombatComponent::GetSelectedEquipment() const
+void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
-	switch (SelectedSlot)
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+	
+	DOREPLIFETIME(UES1CombatComponent, WeaponInventory);
+	DOREPLIFETIME(UES1CombatComponent, CurrentWeapon);
+}
+
+void UES1CombatComponent::Initiate_SwitchWeapon()
+{
+}
+
+void UES1CombatComponent::Initiate_FireWeapon_Pressed()
+{
+}
+
+void UES1CombatComponent::Initiate_FireWeapon_Released()
+{
+}
+
+void UES1CombatComponent::Initiate_ReloadWeapon()
+{
+}
+
+void UES1CombatComponent::Initiate_Aim_Pressed()
+{
+}
+
+void UES1CombatComponent::Initiate_Aim_Released()
+{
+}
+
+void UES1CombatComponent::OnRep_CurrentWeapon(AES1Weapon* LastWeapon)
+{
+	if (!IsValid(CurrentWeapon)) return;
+	CurrentWeapon->AttachToOwningPawn();
+	
+	AES1Character* Owner = Cast<AES1Character>(GetOwner());
+	if (!IsValid(Owner)) return;
+	Owner->LinkAnimLayer();
+}
+
+void UES1CombatComponent::Equip(AES1Weapon* Weapon)
+{
+	CurrentWeapon = Weapon;
+	CurrentWeapon->AttachToOwningPawn();
+}
+
+void UES1CombatComponent::SpawnInventory()
+{
+	if (GetOwner()->GetLocalRole() < ROLE_Authority) return;
+	
+	for (TSubclassOf<AES1Weapon>& WeaponClass : DefaultWeaponClasses)
 	{
-	case EES1SelectedWeaponSlot::PrimaryWeapon:
-		return PrimaryWeapon;
-	case EES1SelectedWeaponSlot::SecondaryWeapon:
-		return SecondaryWeapon;
-	case EES1SelectedWeaponSlot::SideWeapon:
-		return SideWeapon;
-	default:
-		return nullptr;
+		AES1Weapon* Weapon = SpawnWeapon(WeaponClass);
+		WeaponInventory.AddUnique(Weapon);
+	}
+	
+	if (WeaponInventory.Num() > 0)
+	{
+		Equip(WeaponInventory[0]);
 	}
 }
 
-void UES1CombatComponent::SwitchEquipment(EES1SelectedWeaponSlot IncomingSlot)
+void UES1CombatComponent::DestroyInventory()
 {
-	AES1Equipment* Equipment = GetSelectedEquipment();
-	if (Equipment != nullptr)
+	for (AES1Weapon* Weapon : WeaponInventory)
 	{
-		Equipment->UnequipItem();
-	}
-	
-	SelectedSlot = IncomingSlot;
-	AES1Equipment* IncomingEquipment = GetSelectedEquipment();
-	if (IncomingEquipment != nullptr)
-	{
-		IncomingEquipment->EquipItem();
-		SelectedEquipment = IncomingEquipment;
+		if (IsValid(Weapon))
+		{
+			Weapon->Destroy();
+		}
 	}
 }
+
+TSubclassOf<UAnimInstance> UES1CombatComponent::GetCurrentWeaponAnimLayer() const
+{
+	if (!IsValid(CurrentWeapon)) return nullptr;
+	
+	if (const FES1PlayerAnimInstance* AnimLayer = WeaponData->PlayerAnims.Find(CurrentWeapon->WeaponType))
+		return AnimLayer->AnimInstance;
+	
+	return nullptr;
+}
+
+void UES1CombatComponent::BeginPlay()
+{
+	Super::BeginPlay();	
+}
+
+AES1Weapon* UES1CombatComponent::SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass)
+{
+	AActor* OwningActor = GetOwner();
+	if (!IsValid(OwningActor)) return nullptr;
+	if (OwningActor->GetLocalRole() < ROLE_Authority) return nullptr;
+	
+	FActorSpawnParameters SpawnInfo;
+	SpawnInfo.Instigator = Cast<APawn>(OwningActor);
+	SpawnInfo.Owner = OwningActor;
+	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	
+	return GetWorld()->SpawnActor<AES1Weapon>(WeaponClass, SpawnInfo);
+}
+
 
 UAnimMontage* UES1CombatComponent::GetSelectedEquipmentMontage(const FGameplayTag& GroupTag) const
 {
-	if (SelectedEquipment)
-	{
-		return SelectedEquipment->GetMontage(GroupTag);
-	}
+	// if (SelectedEquipment)
+	// {
+	// 	return SelectedEquipment->GetMontage(GroupTag);
+	// }
 	
 	return nullptr;
 }
 
 UAnimationAsset* UES1CombatComponent::GetSelectedEquipmentAnimation(const FGameplayTag& GroupTag) const
 {
-	if (SelectedEquipment)
-	{
-		return SelectedEquipment->GetAnimation(GroupTag);
-	}
+	// if (SelectedEquipment)
+	// {
+	// 	return SelectedEquipment->GetAnimation(GroupTag);
+	// }
 	
 	return nullptr;
 }
 
 bool UES1CombatComponent::UseSelectedEquipment()
 {
-	if (SelectedEquipment)
-	{
-		if (SelectedEquipment->bCanUse)
-		{
-			SelectedEquipment->Use();
-			return true;
-		}
-	}
+	// if (SelectedEquipment)
+	// {
+	// 	if (SelectedEquipment->bCanUse)
+	// 	{
+	// 		SelectedEquipment->Use();
+	// 		return true;
+	// 	}
+	// }
 	
 	return false;
 }
-
-AES1Weapon* UES1CombatComponent::Spawn(TSubclassOf<AES1Weapon> WeaponClass)
-{
-	if (!WeaponClass) return nullptr;
-    
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	
-	SpawnParams.Owner = GetOwner();
-    
-	AES1Weapon* SpawnedWeapon = GetWorld()->SpawnActor<AES1Weapon>(WeaponClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
-    
-	if (SpawnedWeapon)
-	{
-		FName SpawnedSocket = SpawnedWeapon->GetUnequipSocketName();
-       
-		if (ACharacter* Owner = Cast<ACharacter>(GetOwner()))
-		{
-			SpawnedWeapon->AttachToOwner(SpawnedSocket);
-		}
-	}
-    
-	return SpawnedWeapon;
-}
-	
 	
 

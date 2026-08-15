@@ -2,6 +2,7 @@
 
 #include "KismetAnimationLibrary.h"
 #include "Characters/ES1Character.h"
+#include "Data/ES1WeaponData.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 UES1AnimInstance::UES1AnimInstance()
@@ -16,7 +17,8 @@ void UES1AnimInstance::NativeInitializeAnimation()
 	
 	if (Character)
 	{
-		MovementComponent = Character->GetCharacterMovement();
+		CMC = Character->GetCharacterMovement();
+		CombatComponent = Character->GetComponentByClass<UES1CombatComponent>();
 	}
 }
 
@@ -24,18 +26,28 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
 	
-	if (Character == nullptr || MovementComponent == nullptr) return;
+	if (!IsValid(Character) ||
+		!IsValid(CMC) ||
+		!IsValid(CombatComponent)) return;
 	
-	SelectedEquipment = Character->GetSelectedEquipmentType();
-	MovementGate = Character->GetMovementGate();
 	
-	bUseCrouchRifleUpperBody = bIsCrouching && (SelectedEquipment == EES1EquipmentType::Rifle);
+	CurrentWeapon = CombatComponent->GetCurrentWeapon();
+	if (IsValid(CurrentWeapon))
+	{
+		CurrentWeaponType = CurrentWeapon->WeaponType;
+	}
+	else
+	{
+		CurrentWeaponType = ES1WeaponTags::Weapon_Type_Unarmed;
+	}
 	
 	UpdateMovementGate();
 	
-	Velocity = MovementComponent->Velocity;
+	bUseCrouchRifleUpperBody = bIsCrouching && (CurrentWeaponType == ES1WeaponTags::Weapon_Type_Rifle);
+	
+	Velocity = CMC->Velocity;
 	Velocity2D = FVector(Velocity.X, Velocity.Y, 0);
-	Acceleration = MovementComponent->GetCurrentAcceleration();
+	Acceleration = CMC->GetCurrentAcceleration();
 	Acceleration2D = FVector(Acceleration.X, Acceleration.Y, 0);
 	bIsAccelerating = Acceleration.Size() > 0.f;
 	
@@ -70,7 +82,7 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	UpdateRootYawOffset(DeltaSeconds);
 	
-	bIsOnAir = MovementComponent->MovementMode == MOVE_Falling;
+	bIsOnAir = CMC->MovementMode == MOVE_Falling;
 	if (bIsOnAir)
 	{
 		bIsJumping = Velocity.Z > 0.f;
@@ -84,7 +96,7 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	if (bIsJumping)
 	{
-		float GravityFactor = MovementComponent->GetGravityZ() * MovementComponent->GravityScale;
+		float GravityFactor = CMC->GetGravityZ() * CMC->GravityScale;
 		TimeToApex = (-Velocity.Z) / GravityFactor;
 	}
 	else
@@ -110,6 +122,17 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	GEngine->AddOnScreenDebugMessage(1, 0.f, FColor::Yellow,
 	FString::Printf(TEXT("Offset: %.1f | Angle: %.1f | WithOffset: %.1f"),
 		RootYawOffset, VelocityLocomotionAngle, VelocityLocomotionAngleWithOffset));
+	
+	GEngine->AddOnScreenDebugMessage(1, 0.f, FColor::Yellow, UEnum::GetValueAsString(MovementGate));
+	
+	GEngine->AddOnScreenDebugMessage(10, 0.f, FColor::Green,
+	FString::Printf(TEXT("MovementGate: %s"), *UEnum::GetValueAsString(MovementGate)));
+
+	GEngine->AddOnScreenDebugMessage(11, 0.f, FColor::Cyan,
+		FString::Printf(TEXT("bIsCrouched(Character): %s"), Character->bIsCrouched ? TEXT("TRUE") : TEXT("FALSE")));
+
+	GEngine->AddOnScreenDebugMessage(12, 0.f, FColor::Orange,
+		FString::Printf(TEXT("bIsCrouching(AnimBP): %s"), bIsCrouching ? TEXT("TRUE") : TEXT("FALSE")));
 }
 
 void UES1AnimInstance::CalculateLocomotionDirection()
@@ -228,7 +251,11 @@ void UES1AnimInstance::UpdateMovementGate()
 	MovementGate = Character->GetMovementGate();
 	bIsMovementGateChanged = MovementGate != LastFrameMovementGate;
 	
-	bIsCrouching = MovementGate == EES1MovementGate::Crouching;
+	bIsCrouching = Character->bIsCrouched;
+	if (!bIsCrouching && MovementGate == EES1MovementGate::Crouching)
+	{
+		MovementGate = EES1MovementGate::Jogging;
+	}
 	bIsCrouchStateChanged = bLastFrameIsCrouching != bIsCrouching;
 }
 
