@@ -149,6 +149,7 @@ void AES1Character::RefreshMovementGate()
 	EES1MovementGate Gate;
 	if (GetCharacterMovement()->IsCrouching()) Gate = EES1MovementGate::Crouching;
 	else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
+	else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
 	else Gate = EES1MovementGate::Jogging;
 	
 	AttributeComponent->SwitchGate(Gate);

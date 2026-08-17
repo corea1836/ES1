@@ -36,7 +36,7 @@ public:
 	
 protected:
 	UFUNCTION(BlueprintImplementableEvent)
-	void OnAim(bool bIsAming);
+	void OnAim(bool bIsAiming);
 	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))

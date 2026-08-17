@@ -41,8 +41,6 @@ public:
 	
 protected:
 	virtual void BeginPlay() override;
-	
-
 
 private:
 	void SetMeshVisibilities(APawn* OwningPawn) const;

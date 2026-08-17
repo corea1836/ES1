@@ -23,6 +23,7 @@ void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	DOREPLIFETIME(UES1CombatComponent, WeaponInventory);
 	DOREPLIFETIME(UES1CombatComponent, CurrentWeapon);
 	DOREPLIFETIME_CONDITION(UES1CombatComponent, bIsAiming, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(UES1CombatComponent, bIsFiring, COND_SkipOwner);
 }
 
 void UES1CombatComponent::Initiate_SwitchWeapon()
@@ -31,6 +32,7 @@ void UES1CombatComponent::Initiate_SwitchWeapon()
 
 void UES1CombatComponent::Initiate_FireWeapon_Pressed()
 {
+	Local_FireWeapon(true);
 }
 
 void UES1CombatComponent::Initiate_FireWeapon_Released()
@@ -116,6 +118,31 @@ void UES1CombatComponent::BeginPlay()
 	Super::BeginPlay();	
 }
 
+void UES1CombatComponent::Server_FireWeapon_Implementation(bool bPressed)
+{
+	Multicast_FireWeapon(bPressed);
+}
+
+void UES1CombatComponent::Multicast_FireWeapon_Implementation(bool bPressed)
+{
+	APawn* OwningPawn = Cast<APawn>(GetOwner());
+	if (!IsValid(OwningPawn)) return;
+	
+	if (!OwningPawn->IsLocallyControlled())
+	{
+		bIsFiring = bPressed;
+	
+		if (!IsValid(WeaponData)) return;
+	
+		UAnimMontage* Montage = WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).PlayerFireMontage;
+		USkeletalMeshComponent* PlayerMesh = IES1PlayerInterface::Execute_GetPlayerMesh(GetOwner());
+		if (IsValid(Montage) && IsValid(PlayerMesh))
+		{
+			PlayerMesh->GetAnimInstance()->Montage_Play(Montage);
+		}
+	}
+}
+
 AES1Weapon* UES1CombatComponent::SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass)
 {
 	AActor* OwningActor = GetOwner();
@@ -137,6 +164,21 @@ void UES1CombatComponent::Local_Aim(bool bPressed)
 		Owner->RefreshMovementGate();
 }
 
+void UES1CombatComponent::Local_FireWeapon(bool bPressed)
+{
+	bIsFiring = bPressed;
+	
+	if (!IsValid(WeaponData)) return;
+	
+	UAnimMontage* Montage = WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).PlayerFireMontage;
+	USkeletalMeshComponent* PlayerMesh = IES1PlayerInterface::Execute_GetPlayerMesh(GetOwner());
+	if (IsValid(Montage) && IsValid(PlayerMesh))
+	{
+		PlayerMesh->GetAnimInstance()->Montage_Play(Montage);
+	}
+	
+	Server_FireWeapon(bPressed);
+}
 
 UAnimMontage* UES1CombatComponent::GetSelectedEquipmentMontage(const FGameplayTag& GroupTag) const
 {

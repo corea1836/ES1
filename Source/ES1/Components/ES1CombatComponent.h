@@ -50,9 +50,16 @@ private:
 	UFUNCTION(Server, Reliable)
 	void Server_Aim(bool bPressed);
 	
+	UFUNCTION(Server, Reliable)
+	void Server_FireWeapon(bool bPressed);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_FireWeapon(bool bPressed);
+	
 	AES1Weapon* SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass);
 	
 	void Local_Aim(bool bPressed);
+	void Local_FireWeapon(bool bPressed);
 	
 	// Variables
 	UPROPERTY(Transient, BlueprintReadOnly, ReplicatedUsing=OnRep_CurrentWeapon, meta=(AllowPrivateAccess=true))
@@ -67,6 +74,8 @@ private:
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
 	bool bIsAiming;
 	
+	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
+	bool bIsFiring;
 	
 	
 	
