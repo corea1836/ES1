@@ -32,10 +32,11 @@ public:
 	virtual void BeginDestroy() override;
 	
 	void LinkAnimLayer();
+	void RefreshMovementGate();
 	
 protected:
-	
-	
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnAim(bool bIsAming);
 	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
@@ -55,6 +56,9 @@ private:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
 	TObjectPtr<class UCameraComponent> FollowCamera;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Camera|Aming", meta=(AllowPrivateAccess=true))
+	float DefaultFieldOfView;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UES1CombatComponent> CombatComponent;

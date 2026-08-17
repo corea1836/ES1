@@ -2,6 +2,7 @@
 
 #include "KismetAnimationLibrary.h"
 #include "Characters/ES1Character.h"
+#include "Components/ES1AttributeComponent.h"
 #include "Data/ES1WeaponData.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -19,6 +20,7 @@ void UES1AnimInstance::NativeInitializeAnimation()
 	{
 		CMC = Character->GetCharacterMovement();
 		CombatComponent = Character->GetComponentByClass<UES1CombatComponent>();
+		AttributeComponent = Character->GetComponentByClass<UES1AttributeComponent>();
 	}
 }
 
@@ -28,7 +30,8 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	if (!IsValid(Character) ||
 		!IsValid(CMC) ||
-		!IsValid(CombatComponent)) return;
+		!IsValid(CombatComponent) ||
+		!IsValid(AttributeComponent)) return;
 	
 	
 	CurrentWeapon = CombatComponent->GetCurrentWeapon();
@@ -123,10 +126,10 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	FString::Printf(TEXT("Offset: %.1f | Angle: %.1f | WithOffset: %.1f"),
 		RootYawOffset, VelocityLocomotionAngle, VelocityLocomotionAngleWithOffset));
 	
-	GEngine->AddOnScreenDebugMessage(1, 0.f, FColor::Yellow, UEnum::GetValueAsString(MovementGate));
+	GEngine->AddOnScreenDebugMessage(1, 0.f, FColor::Yellow, UEnum::GetValueAsString(CurrentMovementGate));
 	
 	GEngine->AddOnScreenDebugMessage(10, 0.f, FColor::Green,
-	FString::Printf(TEXT("MovementGate: %s"), *UEnum::GetValueAsString(MovementGate)));
+	FString::Printf(TEXT("MovementGate: %s"), *UEnum::GetValueAsString(CurrentMovementGate)));
 
 	GEngine->AddOnScreenDebugMessage(11, 0.f, FColor::Cyan,
 		FString::Printf(TEXT("bIsCrouched(Character): %s"), Character->bIsCrouched ? TEXT("TRUE") : TEXT("FALSE")));
@@ -246,15 +249,15 @@ void UES1AnimInstance::CalculateAccelerationLocomotionDirection()
 
 void UES1AnimInstance::UpdateMovementGate()
 {
-	LastFrameMovementGate = MovementGate;
+	LastFrameMovementGate = CurrentMovementGate;
 	bLastFrameIsCrouching = bIsCrouching;
-	MovementGate = Character->GetMovementGate();
-	bIsMovementGateChanged = MovementGate != LastFrameMovementGate;
+	CurrentMovementGate = AttributeComponent->GetCurrentMovementGate();
+	bIsMovementGateChanged = CurrentMovementGate != LastFrameMovementGate;
 	
-	bIsCrouching = Character->bIsCrouched;
-	if (!bIsCrouching && MovementGate == EES1MovementGate::Crouching)
+	bIsCrouching = CMC->bWantsToCrouch;
+	if (!bIsCrouching && CurrentMovementGate == EES1MovementGate::Crouching)
 	{
-		MovementGate = EES1MovementGate::Jogging;
+		CurrentMovementGate = EES1MovementGate::Jogging;
 	}
 	bIsCrouchStateChanged = bLastFrameIsCrouching != bIsCrouching;
 }

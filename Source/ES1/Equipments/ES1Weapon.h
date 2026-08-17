@@ -25,6 +25,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|WeaponType")
 	FGameplayTag WeaponType;
 	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Camera|Aming")
+	float AimFieldOfView;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Equipment | Data")
 	float UseInterval;
 	

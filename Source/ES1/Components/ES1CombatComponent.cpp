@@ -22,6 +22,7 @@ void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	
 	DOREPLIFETIME(UES1CombatComponent, WeaponInventory);
 	DOREPLIFETIME(UES1CombatComponent, CurrentWeapon);
+	DOREPLIFETIME_CONDITION(UES1CombatComponent, bIsAiming, COND_SkipOwner);
 }
 
 void UES1CombatComponent::Initiate_SwitchWeapon()
@@ -42,10 +43,14 @@ void UES1CombatComponent::Initiate_ReloadWeapon()
 
 void UES1CombatComponent::Initiate_Aim_Pressed()
 {
+	Local_Aim(true);
+	Server_Aim(true);
 }
 
 void UES1CombatComponent::Initiate_Aim_Released()
 {
+	Local_Aim(false);
+	Server_Aim(false);
 }
 
 void UES1CombatComponent::OnRep_CurrentWeapon(AES1Weapon* LastWeapon)
@@ -56,6 +61,11 @@ void UES1CombatComponent::OnRep_CurrentWeapon(AES1Weapon* LastWeapon)
 	AES1Character* Owner = Cast<AES1Character>(GetOwner());
 	if (!IsValid(Owner)) return;
 	Owner->LinkAnimLayer();
+}
+
+void UES1CombatComponent::Server_Aim_Implementation(bool bPressed)
+{
+	Local_Aim(bPressed);
 }
 
 void UES1CombatComponent::Equip(AES1Weapon* Weapon)
@@ -120,6 +130,13 @@ AES1Weapon* UES1CombatComponent::SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass
 	return GetWorld()->SpawnActor<AES1Weapon>(WeaponClass, SpawnInfo);
 }
 
+void UES1CombatComponent::Local_Aim(bool bPressed)
+{
+	bIsAiming = bPressed;
+	if (AES1Character* Owner = Cast<AES1Character>(GetOwner()))
+		Owner->RefreshMovementGate();
+}
+
 
 UAnimMontage* UES1CombatComponent::GetSelectedEquipmentMontage(const FGameplayTag& GroupTag) const
 {
@@ -139,20 +156,6 @@ UAnimationAsset* UES1CombatComponent::GetSelectedEquipmentAnimation(const FGamep
 	// }
 	
 	return nullptr;
-}
-
-bool UES1CombatComponent::UseSelectedEquipment()
-{
-	// if (SelectedEquipment)
-	// {
-	// 	if (SelectedEquipment->bCanUse)
-	// 	{
-	// 		SelectedEquipment->Use();
-	// 		return true;
-	// 	}
-	// }
-	
-	return false;
 }
 	
 

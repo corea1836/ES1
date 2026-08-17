@@ -30,12 +30,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
 	TObjectPtr<AES1Weapon> CurrentWeapon;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<UES1AttributeComponent> AttributeComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	EES1MovementGate CurrentMovementGate;
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Anim|Weapon")
 	FGameplayTag CurrentWeaponType = ES1WeaponTags::Weapon_Type_Unarmed;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
-	EES1MovementGate MovementGate;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	EES1MovementGate LastFrameMovementGate;

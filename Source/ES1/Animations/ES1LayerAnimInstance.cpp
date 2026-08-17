@@ -25,7 +25,7 @@ void UES1LayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	{
 		CurrentWeaponType = MainAnimInstance->CurrentWeaponType;
 		
-		MovementGate = MainAnimInstance->MovementGate;
+		MovementGate = MainAnimInstance->CurrentMovementGate;
 		VelocityLocomotionAngle = MainAnimInstance->VelocityLocomotionAngle;
 		AccelerationLocomotionAngle = MainAnimInstance->AccelerationLocomotionAngle;
 		LastFrameVelocityLocomotionDirection = MainAnimInstance->LastFrameVelocityLocomotionDirection;

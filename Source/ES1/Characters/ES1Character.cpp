@@ -34,10 +34,12 @@ AES1Character::AES1Character()
 	FollowCamera->bUsePawnControlRotation = false;
 
 	AttributeComponent = CreateDefaultSubobject<UES1AttributeComponent>(TEXT("AttributeComponent"));
+	AttributeComponent->SetIsReplicated(true);
+	
 	CombatComponent = CreateDefaultSubobject<UES1CombatComponent>(TEXT("CombatComponent"));
 	CombatComponent->SetIsReplicated(true);
 	
-	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	DefaultFieldOfView = 65.f;
 }
 
 
@@ -92,15 +94,13 @@ void AES1Character::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &ThisClass::Input_Look);
 	EnhancedInputComponent->BindAction(CrouchAction, ETriggerEvent::Started, this, &ThisClass::Input_Crouch);
 	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &ThisClass::Input_Jump);
-
-	 EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_SwitchWeapon);
-
-	 EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ThisClass::StopJumping);
-	 EnhancedInputComponent->BindAction(FireWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_FireWeapon_Pressed);
-	 EnhancedInputComponent->BindAction(FireWeaponAction, ETriggerEvent::Completed, this, &ThisClass::Input_FireWeapon_Released);
+	EnhancedInputComponent->BindAction(SwitchWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_SwitchWeapon);
+	EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &ThisClass::StopJumping);
+	EnhancedInputComponent->BindAction(FireWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_FireWeapon_Pressed);
+	EnhancedInputComponent->BindAction(FireWeaponAction, ETriggerEvent::Completed, this, &ThisClass::Input_FireWeapon_Released);
 	EnhancedInputComponent->BindAction(AimWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_Aim_Pressed);
 	EnhancedInputComponent->BindAction(AimWeaponAction, ETriggerEvent::Completed, this, &ThisClass::Input_Aim_Released);
-	 EnhancedInputComponent->BindAction(ReloadWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_ReloadWeapon);
+	EnhancedInputComponent->BindAction(ReloadWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_ReloadWeapon);
 }
 
 FName AES1Character::GetWeaponEquippedSocket_Implementation(const FGameplayTag& WeaponType) const
@@ -119,11 +119,11 @@ void AES1Character::BeginPlay()
 	Super::BeginPlay();		 
 	
 	GetCharacterMovement()->bCanWalkOffLedgesWhenCrouching = true;
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	
-	MovementGate = EES1MovementGate::Jogging;
-	SetMovementGate();
+	FollowCamera->SetFieldOfView(DefaultFieldOfView);
 	
-	
+	AttributeComponent->SwitchGate(EES1MovementGate::Jogging);
 }
 
 void AES1Character::BeginDestroy()
@@ -142,6 +142,16 @@ void AES1Character::LinkAnimLayer()
 	if (!IsValid(AnimLayerClass)) return;
 	
 	Execute_GetPlayerMesh(this)->LinkAnimClassLayers(AnimLayerClass);
+}
+
+void AES1Character::RefreshMovementGate()
+{
+	EES1MovementGate Gate;
+	if (GetCharacterMovement()->IsCrouching()) Gate = EES1MovementGate::Crouching;
+	else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
+	else Gate = EES1MovementGate::Jogging;
+	
+	AttributeComponent->SwitchGate(Gate);
 }
 
 void AES1Character::PossessedBy(AController* NewController)
@@ -220,11 +230,13 @@ void AES1Character::Input_FireWeapon_Released()
 void AES1Character::Input_Aim_Pressed()
 {
 	CombatComponent->Initiate_Aim_Pressed();
+	OnAim(true);
 }
 
 void AES1Character::Input_Aim_Released()
 {
 	CombatComponent->Initiate_Aim_Released();
+	OnAim(false);
 }
 
 void AES1Character::Input_ReloadWeapon()
@@ -318,20 +330,13 @@ void AES1Character::Crouch(const FInputActionValue& Values)
 void AES1Character::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
 {
 	Super::OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
-	UE_LOG(LogTemp, Warning, TEXT(">>> OnStartCrouch"));
-	MovementGate = EES1MovementGate::Crouching;
-	SetMovementGate();
+	RefreshMovementGate();
 }
 
 void AES1Character::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
 {
 	Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
-	
-	UE_LOG(LogTemp, Error, TEXT("<<< OnEndCrouch 호출 콜스택:\n%s"),
-		*FFrame::GetScriptCallstack());  // 스크립트 콜스택
-	
-	MovementGate = EES1MovementGate::Jogging;
-	SetMovementGate();
+	RefreshMovementGate();
 }
 
 void AES1Character::Jump(const FInputActionValue& Values)
@@ -419,11 +424,5 @@ void AES1Character::SetMovementGate()
 {
 	if (UCharacterMovementComponent* movementComponent = GetCharacterMovement())
 	{
-		movementComponent->MaxWalkSpeed = AttributeComponent->GetMaxWalkSpeed(MovementGate);
-		movementComponent->MaxAcceleration = AttributeComponent->GetMaxAcceleration(MovementGate);
-		movementComponent->BrakingDecelerationWalking = AttributeComponent->GetBrakingDeceleration(MovementGate);
-		movementComponent->BrakingFrictionFactor = AttributeComponent->GetBrakingFrictionFactor(MovementGate);
-		movementComponent->BrakingFriction = AttributeComponent->GetBrakingFriction(MovementGate);
-		movementComponent->bUseSeparateBrakingFriction = AttributeComponent->GetbUseSeperateBrakingFriction(MovementGate);
 	}
 }

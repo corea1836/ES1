@@ -16,6 +16,8 @@ AES1Weapon::AES1Weapon()
 	Mesh->CastShadow = true;
 	SetRootComponent(Mesh);
 	Mesh->SetHiddenInGame(true);
+	
+	AimFieldOfView = 200.f;
 }
 
 void AES1Weapon::OnRep_Instigator()
@@ -103,7 +105,7 @@ void AES1Weapon::ToggleUse()
 
 void AES1Weapon::SetMeshVisibilities(APawn* OwningPawn) const
 {
-	Mesh->SetHiddenInGame(false);
+		Mesh->SetHiddenInGame(false);
 }
 
 
