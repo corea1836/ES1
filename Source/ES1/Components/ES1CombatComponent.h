@@ -42,6 +42,9 @@ public:
 protected:
 	virtual void BeginPlay() override;
 	
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Weapon")
+	float TraceLength;
+	
 private:	
 	// Functions
 	UFUNCTION()
@@ -51,15 +54,17 @@ private:
 	void Server_Aim(bool bPressed);
 	
 	UFUNCTION(Server, Reliable)
-	void Server_FireWeapon(bool bPressed);
+	void Server_FireWeapon(const FHitResult& Hit);
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_FireWeapon(bool bPressed);
+	void Multicast_FireWeapon(const FHitResult& Hit);
 	
 	AES1Weapon* SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass);
 	
+	void FireTimerFinished();
+	
 	void Local_Aim(bool bPressed);
-	void Local_FireWeapon(bool bPressed);
+	void Local_FireWeapon();
 	
 	// Variables
 	UPROPERTY(Transient, BlueprintReadOnly, ReplicatedUsing=OnRep_CurrentWeapon, meta=(AllowPrivateAccess=true))
@@ -73,6 +78,9 @@ private:
 	
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
 	bool bIsAiming;
+	
+	bool bIsTriggerPressed;
+	FTimerHandle FireTimer;
 	
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
 	bool bIsFiring;

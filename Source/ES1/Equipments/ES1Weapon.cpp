@@ -1,8 +1,10 @@
 #include "Equipments/ES1Weapon.h"
 
 #include "ES1GameplayTags.h"
+#include "KismetTraceUtils.h"
 #include "GameFramework/Character.h"
 #include "Interfaces/ES1PlayerInterface.h"
+#include "Kismet/KismetMathLibrary.h"
 
 AES1Weapon::AES1Weapon()
 {
@@ -18,6 +20,8 @@ AES1Weapon::AES1Weapon()
 	Mesh->SetHiddenInGame(true);
 	
 	AimFieldOfView = 200.f;
+	TraceRadius = 5.f;
+	FireTime = 0.1f;
 }
 
 void AES1Weapon::OnRep_Instigator()
@@ -47,6 +51,66 @@ void AES1Weapon::AttachToOwningPawn() const
 	USkeletalMeshComponent* PawnMesh = IES1PlayerInterface::Execute_GetPlayerMesh(OwningPawn);
 	
 	Mesh->AttachToComponent(PawnMesh, FAttachmentTransformRules::KeepRelativeTransform, EquippedSocket);
+}
+
+void AES1Weapon::WeaponTrace(FHitResult& OutHit, float TraceLength)
+{
+	FCollisionQueryParams QueryParams;
+	QueryParams.bReturnPhysicalMaterial = true;
+	QueryParams.AddIgnoredActor(GetOwner());
+	
+	FCollisionResponseParams ResponseParams;
+	ResponseParams.CollisionResponse.SetAllChannels(ECR_Ignore);
+	ResponseParams.CollisionResponse.SetResponse(ECC_Pawn, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldStatic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldDynamic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_PhysicsBody, ECR_Block);
+
+	ensure(GetInstigator());
+	if (APlayerController* PC = Cast<APlayerController>(GetInstigator()->GetController()); IsValid(PC))
+	{
+		FVector EyesWorldLocation;
+		FRotator EyesWorldRotation;
+		PC->GetActorEyesViewPoint(EyesWorldLocation, EyesWorldRotation);
+		
+		const FVector EyesWorldDirection = UKismetMathLibrary::GetForwardVector(EyesWorldRotation);
+		
+		const FVector Start = EyesWorldLocation + 15;
+		const FVector End = Start + EyesWorldDirection * TraceLength;
+		
+		const bool bHit = GetWorld()->SweepSingleByChannel(
+			OutHit,
+			Start,
+			End,
+			FQuat::Identity,
+			ES1TraceChannel::ECC_Weapon,
+			FCollisionShape::MakeSphere(TraceRadius),
+			QueryParams,
+			ResponseParams);
+		
+		if (!bHit)
+		{
+			OutHit.ImpactPoint = End;
+		}
+		
+		// DrawDebugSphereTraceSingle(
+		// 	GetWorld(),
+		// 	Start,
+		// 	End,
+		// 	TraceRadius,
+		// 	EDrawDebugTrace::ForDuration,
+		// 	bHit,
+		// 	OutHit,
+		// 	FColor::Green,
+		// 	FColor::Red,
+		// 	5.f);
+	}
+}
+
+void AES1Weapon::Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal,
+	TEnumAsByte<EPhysicalSurface> ImpactSurfaceType)
+{
+	FireEffects(ImpactPoint, ImpactNormal, ImpactSurfaceType);
 }
 
 void AES1Weapon::BeginPlay()

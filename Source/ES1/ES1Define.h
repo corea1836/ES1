@@ -2,6 +2,11 @@
 
 #include "CoreMinimal.h"
 
+namespace ES1TraceChannel
+{
+	constexpr ECollisionChannel ECC_Weapon = ECC_GameTraceChannel1;
+}
+
 UENUM(BlueprintType)
 enum class EES1MovementGate : uint8
 {
