@@ -131,6 +131,11 @@ AES1Weapon* AES1Character::GetCurrentWeapon_Implementation()
 	return CombatComponent->GetCurrentWeapon();
 }
 
+int32 AES1Character::GetReserveAmmo_Implementation() const
+{
+	return CombatComponent->CurrentReserveAmmo;
+}
+
 void AES1Character::BeginPlay()
 {
 	Super::BeginPlay();		 

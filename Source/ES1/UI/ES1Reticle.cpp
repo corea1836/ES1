@@ -137,7 +137,7 @@ void UES1Reticle::OnAmmoCounterChanged(UMaterialInstanceDynamic* AmmoCounterDynM
 	}
 }
 
-void UES1Reticle::OnRoundFired(int32 RoundsCurrent, int32 RoundsMax)
+void UES1Reticle::OnRoundFired(int32 RoundsCurrent, int32 RoundsMax, int32 RoundsInReserve)
 {
 	_BaseCornerScaleFactor_RoundFired += CurrentReticleParams.ScaleFactor_RoundFired;
 	_BaseShapeCutFactor_RoundFired += CurrentReticleParams.ShapeCutFactor_RoundFired;

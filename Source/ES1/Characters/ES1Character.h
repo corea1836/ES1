@@ -41,6 +41,7 @@ public:
 	virtual USkeletalMeshComponent* GetPlayerMesh_Implementation() const override;
 	virtual void WeaponReplicated_Implementation() override;
 	virtual AES1Weapon* GetCurrentWeapon_Implementation() override;
+	virtual int32 GetReserveAmmo_Implementation() const override;
 	
 	// Variables
 	UPROPERTY(BlueprintAssignable)

@@ -63,6 +63,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="ES1|UI|Reticle")
 	FReticleParams ReticleParams;
 	
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Icon")
+	TObjectPtr<UMaterialInterface> WeaponIcon;
+	
 protected:
 	virtual void BeginPlay() override;
 	

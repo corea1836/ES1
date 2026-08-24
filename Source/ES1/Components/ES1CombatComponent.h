@@ -11,8 +11,9 @@ class UES1WeaponData;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FReticleChanged, UMaterialInstanceDynamic*, ReticleDynMatInst, const FReticleParams&, ReticleParams);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAmmoCounterChanged, UMaterialInstanceDynamic*, AmmoCounterDynMatInst, int32, RoundCurrent, int32, RoundsMax);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FRoundFired, int32, RoundsCurrent, int32, RoundsMax);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FRoundFired, int32, RoundsCurrent, int32, RoundsMax, int32, RoundsInReserve);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAimingStatusChanged, bool, bIsAiming);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FCurrentReserveAmmoChanged, int32, RoundsInReserve, int32, RoundsInWeapon, UMaterialInterface*, WeaponIconMaterial);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class ES1_API UES1CombatComponent : public UActorComponent
@@ -58,9 +59,15 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FAimingStatusChanged OnAimingStatusChanged;
 	
+	UPROPERTY(BlueprintAssignable)
+	FCurrentReserveAmmoChanged OnCurrentReserveeAmmoChanged;
+	
 	// Variables
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Weapon")
 	TObjectPtr<UES1WeaponData> WeaponData;
+	
+	UPROPERTY(ReplicatedUsing=OnRep_CurrentReserveAmmo)
+	int32 CurrentReserveAmmo;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -72,6 +79,9 @@ private:
 	// Functions
 	UFUNCTION()
 	void OnRep_CurrentWeapon(AES1Weapon* LastWeapon);
+	
+	UFUNCTION()
+	void OnRep_CurrentReserveAmmo();
 	
 	UFUNCTION(Server, Reliable)
 	void Server_Aim(bool bIsPressed);
@@ -107,4 +117,6 @@ private:
 	
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
 	bool bFiring;	
+	
+	TMap<FGameplayTag, int32> ReserveAmmo;
 };

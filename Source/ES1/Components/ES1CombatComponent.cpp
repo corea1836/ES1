@@ -27,6 +27,7 @@ void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	DOREPLIFETIME(UES1CombatComponent, CurrentWeapon);
 	DOREPLIFETIME_CONDITION(UES1CombatComponent, bAiming, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(UES1CombatComponent, bFiring, COND_SkipOwner);
+	DOREPLIFETIME_CONDITION(UES1CombatComponent, CurrentReserveAmmo, COND_OwnerOnly);
 }
 
 void UES1CombatComponent::Initiate_SwitchWeapon()
@@ -77,6 +78,14 @@ void UES1CombatComponent::OnRep_CurrentWeapon(AES1Weapon* LastWeapon)
 	Owner->LinkAnimLayer();
 }
 
+void UES1CombatComponent::OnRep_CurrentReserveAmmo()
+{
+	if (IsValid(CurrentWeapon))
+	{
+		OnCurrentReserveeAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
+	}
+}
+
 void UES1CombatComponent::Server_Aim_Implementation(bool bIsPressed)
 {
 	Local_Aim(bIsPressed);
@@ -86,6 +95,9 @@ void UES1CombatComponent::Equip(AES1Weapon* Weapon)
 {
 	CurrentWeapon = Weapon;
 	CurrentWeapon->AttachToOwningPawn();
+	
+	CurrentReserveAmmo = ReserveAmmo.FindChecked(CurrentWeapon->WeaponType);
+	OnCurrentReserveeAmmoChanged.Broadcast(CurrentReserveAmmo, Weapon->Ammo, CurrentWeapon->WeaponIcon);
 }
 
 void UES1CombatComponent::SpawnInventory()
@@ -96,6 +108,7 @@ void UES1CombatComponent::SpawnInventory()
 	{
 		AES1Weapon* Weapon = SpawnWeapon(WeaponClass);
 		WeaponInventory.AddUnique(Weapon);
+		ReserveAmmo.Add(Weapon->WeaponType, Weapon->StartingCarriedAmmo);
 	}
 	
 	if (WeaponInventory.Num() > 0)
@@ -228,7 +241,7 @@ void UES1CombatComponent::Local_FireWeapon()
 	EPhysicalSurface ImpactSurfaceType = Hit.PhysMaterial.IsValid(false) ? Hit.PhysMaterial->SurfaceType.GetValue() : SurfaceType1;
 	CurrentWeapon->Local_Fire(Hit.ImpactPoint, Hit.ImpactNormal, ImpactSurfaceType);
 	
-	OnRoundFired.Broadcast(CurrentWeapon->Ammo, CurrentWeapon->MagCapacity);
+	OnRoundFired.Broadcast(CurrentWeapon->Ammo, CurrentWeapon->MagCapacity, CurrentReserveAmmo);
 	
 	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &ThisClass::FireTimerFinished, CurrentWeapon->FireTime);
 	
