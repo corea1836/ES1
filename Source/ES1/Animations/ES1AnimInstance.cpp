@@ -46,13 +46,13 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	UpdateMovementGate();
 	
-	bUseCrouchRifleUpperBody = bIsCrouching && (CurrentWeaponType == ES1WeaponTags::Weapon_Type_Rifle);
+	bUseCrouchRifleUpperBody = bCrouching && (CurrentWeaponType == ES1WeaponTags::Weapon_Type_Rifle);
 	
 	Velocity = CMC->Velocity;
 	Velocity2D = FVector(Velocity.X, Velocity.Y, 0);
 	Acceleration = CMC->GetCurrentAcceleration();
 	Acceleration2D = FVector(Acceleration.X, Acceleration.Y, 0);
-	bIsAccelerating = Acceleration.Size() > 0.f;
+	bAccelerating = Acceleration.Size() > 0.f;
 	
 	BrakingDecelerationWalking = Character->GetCharacterMovement()->BrakingDecelerationWalking;
 	BrakingFrictionFactor = Character->GetCharacterMovement()->BrakingFrictionFactor;
@@ -85,19 +85,19 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	UpdateRootYawOffset(DeltaSeconds);
 	
-	bIsOnAir = CMC->MovementMode == MOVE_Falling;
-	if (bIsOnAir)
+	bOnAir = CMC->MovementMode == MOVE_Falling;
+	if (bOnAir)
 	{
-		bIsJumping = Velocity.Z > 0.f;
-		bIsFalling = Velocity.Z < 0.f;
+		bJumping = Velocity.Z > 0.f;
+		bFalling = Velocity.Z < 0.f;
 	}
 	else
 	{
-		bIsJumping = false;
-		bIsFalling = false;
+		bJumping = false;
+		bFalling = false;
 	}
 	
-	if (bIsJumping)
+	if (bJumping)
 	{
 		float GravityFactor = CMC->GetGravityZ() * CMC->GravityScale;
 		TimeToApex = (-Velocity.Z) / GravityFactor;
@@ -107,13 +107,13 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		TimeToApex = 0.f;
 	}
 	
-	if (bIsFalling)
+	if (bFalling)
 	{
 		TimeFalling += DeltaSeconds;
 	}
 	else
 	{
-		if (bIsJumping) TimeFalling = 0.f;
+		if (bJumping) TimeFalling = 0.f;
 		
 	}
 	
@@ -135,7 +135,7 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		FString::Printf(TEXT("bIsCrouched(Character): %s"), Character->bIsCrouched ? TEXT("TRUE") : TEXT("FALSE")));
 
 	GEngine->AddOnScreenDebugMessage(12, 0.f, FColor::Orange,
-		FString::Printf(TEXT("bIsCrouching(AnimBP): %s"), bIsCrouching ? TEXT("TRUE") : TEXT("FALSE")));
+		FString::Printf(TEXT("bIsCrouching(AnimBP): %s"), bCrouching ? TEXT("TRUE") : TEXT("FALSE")));
 }
 
 void UES1AnimInstance::CalculateLocomotionDirection()
@@ -250,16 +250,16 @@ void UES1AnimInstance::CalculateAccelerationLocomotionDirection()
 void UES1AnimInstance::UpdateMovementGate()
 {
 	LastFrameMovementGate = CurrentMovementGate;
-	bLastFrameIsCrouching = bIsCrouching;
+	bLastFrameIsCrouching = bCrouching;
 	CurrentMovementGate = AttributeComponent->GetCurrentMovementGate();
-	bIsMovementGateChanged = CurrentMovementGate != LastFrameMovementGate;
+	bMovementGateChanged = CurrentMovementGate != LastFrameMovementGate;
 	
-	bIsCrouching = CMC->bWantsToCrouch;
-	if (!bIsCrouching && CurrentMovementGate == EES1MovementGate::Crouching)
+	bCrouching = CMC->bWantsToCrouch;
+	if (!bCrouching && CurrentMovementGate == EES1MovementGate::Crouching)
 	{
 		CurrentMovementGate = EES1MovementGate::Jogging;
 	}
-	bIsCrouchStateChanged = bLastFrameIsCrouching != bIsCrouching;
+	bCrouchStateChanged = bLastFrameIsCrouching != bCrouching;
 }
 
 void UES1AnimInstance::UpdateRootYawOffset(float DeltaSeconds)

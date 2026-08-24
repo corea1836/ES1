@@ -7,9 +7,12 @@
 #include "Interfaces/ES1PlayerInterface.h"
 #include "ES1Character.generated.h"
 
+class UES1Overlay;
 enum class EES1MovementGate : uint8;
 enum class EES1EquipmentType : uint8;
 struct FInputActionValue;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWeaponFirstReplicated, AES1Weapon*, Weapon);
 
 UCLASS()
 class ES1_API AES1Character : public ACharacter, public IES1PlayerInterface
@@ -23,10 +26,7 @@ public:
 	virtual void NotifyControllerChanged() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	virtual void PossessedBy(AController* NewController) override;
-	
-	// PlayerInterface 
-	virtual FName GetWeaponEquippedSocket_Implementation(const FGameplayTag& WeaponType) const override;
-	virtual USkeletalMeshComponent* GetPlayerMesh_Implementation() const override;
+	virtual void OnRep_PlayerState() override;
 	
 	virtual void BeginPlay() override;
 	virtual void BeginDestroy() override;
@@ -34,25 +34,40 @@ public:
 	void LinkAnimLayer();
 	void RefreshMovementGate();
 	
+	bool HasWeaponFirstReplicated() const { return bWeaponFirstReplicated; }
+	
+	// PlayerInterface 
+	virtual FName GetWeaponEquippedSocket_Implementation(const FGameplayTag& WeaponType) const override;
+	virtual USkeletalMeshComponent* GetPlayerMesh_Implementation() const override;
+	virtual void WeaponReplicated_Implementation() override;
+	virtual AES1Weapon* GetCurrentWeapon_Implementation() override;
+	
+	// Variables
+	UPROPERTY(BlueprintAssignable)
+	FWeaponFirstReplicated OnWeaponFirstReplicated;
+	
 protected:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnAim(bool bIsAiming);
 	
-private:
+private:	
+	void Input_Move(const FInputActionValue& InputActionValue);
+	void Input_Look(const FInputActionValue& InputActionValue);
+	void Input_Crouch();
+	void Input_Jump();
+	void Input_SwitchWeapon();
+	void Input_FireWeapon_Pressed();
+	void Input_FireWeapon_Released();
+	void Input_Aim_Pressed();
+	void Input_Aim_Released();
+	void Input_ReloadWeapon();
+	
+	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+	
+	// Variables
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
 	TObjectPtr<class USpringArmComponent> SpringArm;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
-	bool bIsInterpCameraBoom = false;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
-	float DefaultArmLength = 350.f;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
-	float AimArmLength = 200.f;
-	
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
-	float ArmInterpSpeed = 5.f;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
 	TObjectPtr<class UCameraComponent> FollowCamera;
@@ -66,9 +81,6 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
 	TObjectPtr<class UES1AttributeComponent> AttributeComponent;
 	
-	float TargetArmLengthGoal = 500.f;
-	
-private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
 	TObjectPtr<class UInputMappingContext> ES1IMC;
 	
@@ -96,42 +108,11 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UInputAction> ReloadWeaponAction;
 	
-	void Input_Move(const FInputActionValue& InputActionValue);
-	void Input_Look(const FInputActionValue& InputActionValue);
-	void Input_Crouch();
-	void Input_Jump();
-	void Input_SwitchWeapon();
-	void Input_FireWeapon_Pressed();
-	void Input_FireWeapon_Released();
-	void Input_Aim_Pressed();
-	void Input_Aim_Released();
-	void Input_ReloadWeapon();
-
-private:
-	EES1MovementGate MovementGate;
-	EES1MovementGate CachedMovementGate;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
+	TSubclassOf<UUserWidget> PlayerOverlayWidgetClass;
 	
-	bool bIsFiring = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UES1Overlay> PlayerOverlayWidget;
 	
-public:
-	EES1MovementGate GetMovementGate() const { return MovementGate; }
-	
-protected:
-	void Move(const FInputActionValue& Values);
-	void Look(const FInputActionValue& Values);
-	void SwitchWeapon(const FInputActionValue& Values);
-	void AimStart(const FInputActionValue& Values);
-	void AimComplete(const FInputActionValue& Values);
-	void Crouch(const FInputActionValue& Values);
-	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
-	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
-	void Jump(const FInputActionValue& Values);
-	void StopJumping(const FInputActionValue& Values);
-	void UseEquipment(const FInputActionValue& Values);
-	void Reload(const FInputActionValue& Values);
-	void UpdateCameraBoom(float DeltaTime);
-	
-	void OnUseMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-	
-	void SetMovementGate();
+	bool bWeaponFirstReplicated;
 };

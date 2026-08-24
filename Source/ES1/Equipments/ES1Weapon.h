@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "ES1Define.h"
-#include "Data/ES1AnimationData.h"
+#include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "ES1Weapon.generated.h"
 
@@ -21,17 +21,19 @@ class ES1_API AES1Weapon : public AActor
 public:	
 	// Functions
 	AES1Weapon();
-	
 	virtual void OnRep_Instigator() override;
-	
 	virtual void OnConstruction(const FTransform& Transform) override;
 	
 	USkeletalMeshComponent* GetMesh() const;
-	
+	UMaterialInstanceDynamic* GetReticleDynamicMaterialInstance();
+	UMaterialInstanceDynamic* GetAmmoCounterDynamicMaterialInstance();
+		
 	void AttachToOwningPawn() const;
 	void WeaponTrace(FHitResult& OutHit, float TraceLength);
 	
 	void Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal, TEnumAsByte<EPhysicalSurface> ImpactSurfaceType);
+	void Auth_Fire();
+	void Rep_Fire(int32 AuthAmmo);
 	
 	// Variables
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|WeaponType")
@@ -49,16 +51,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|FireType")
 	float FireTime;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Equipment | Data")
-	float UseInterval;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Ammo")
+	int32 MagCapacity;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Equipment | Animation")
-	TObjectPtr<UES1AnimationData> AnimationData;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Ammo")
+	int32 Ammo;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	bool bCanUse = true;
-	
-	FTimerHandle UseTimerHandle;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Ammo")
+	int32 StartingCarriedAmmo;
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|UI|Reticle")
+	FReticleParams ReticleParams;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -67,21 +70,24 @@ protected:
 	void FireEffects(const FVector& ImpactPoint, const FVector& ImpactNormal, EPhysicalSurface ImpactSurfaceType);
 
 private:
+	// Functions
 	void SetMeshVisibilities(APawn* OwningPawn) const;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1 | Mesh",  meta=(AllowPrivateAccess=true))
 	TObjectPtr<USkeletalMeshComponent> Mesh;
+		
+	// Variables
+	int32 Sequence;
 	
-public:
-	FORCEINLINE float GetUseInterval() const { return UseInterval; }
-
-	TObjectPtr<UAnimMontage> GetMontage(const FGameplayTag& GroupTag) const;
-	TObjectPtr<UAnimationAsset> GetAnimation(const FGameplayTag& GroupTag) const;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UMaterialInterface> ReticleMaterial;
 	
-public:
-	virtual void EquipItem();
-	virtual void UnequipItem();
-	virtual void AttachToOwner(FName SocketName);
-	virtual void Use();
-	void ToggleUse();
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UMaterialInterface> AmmoCounterMaterial;
+	
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> DynMatInst_Reticle;
+	
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> DynMatInst_AmmoCounter;
 };

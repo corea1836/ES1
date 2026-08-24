@@ -21,7 +21,10 @@ public class ES1 : ModuleRules
 			"InputCore",
 			"EnhancedInput",
 			"GameplayTags",
-			"PhysicsCore"
+			"PhysicsCore",
+			"UMG",
+			"Slate",
+			"SlateCore",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "AnimGraphRuntime", "AnimationLocomotionLibraryRuntime" });

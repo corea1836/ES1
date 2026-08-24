@@ -7,15 +7,17 @@
 #include "ES1Define.h"
 #include "ES1GameplayTags.h"
 #include "Animations/ES1AnimInstance.h"
+#include "Blueprint/UserWidget.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/ES1AttributeComponent.h"
 #include "Components/ES1CombatComponent.h"
 #include "Data/ES1WeaponData.h"
 #include "Equipments/ES1Weapon.h"
-#include "Equipments/ES1ProtectedWeapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Tags/ES1WeaponTags.h"
+#include "Equipments/ES1Weapon.h"
+#include "UI/ES1Overlay.h"
 
 AES1Character::AES1Character()
 {
@@ -40,6 +42,8 @@ AES1Character::AES1Character()
 	CombatComponent->SetIsReplicated(true);
 	
 	DefaultFieldOfView = 65.f;
+	
+	bWeaponFirstReplicated = false;
 }
 
 
@@ -68,7 +72,6 @@ void AES1Character::Tick(float DeltaTime)
 	//
 	// Cast<UES1AnimInstance>(GetPlayerMesh()->GetAnimInstance())->ReceiveGroundDistance(HitResult.Distance);
 
-	UpdateCameraBoom(DeltaTime);
 }
 
 void AES1Character::NotifyControllerChanged()
@@ -114,6 +117,20 @@ USkeletalMeshComponent* AES1Character::GetPlayerMesh_Implementation() const
 	return ACharacter::GetMesh();
 }
 
+void AES1Character::WeaponReplicated_Implementation()
+{
+	if (!bWeaponFirstReplicated)
+	{
+		bWeaponFirstReplicated = true;
+		OnWeaponFirstReplicated.Broadcast(CombatComponent->GetCurrentWeapon());
+	}
+}
+
+AES1Weapon* AES1Character::GetCurrentWeapon_Implementation()
+{
+	return CombatComponent->GetCurrentWeapon();
+}
+
 void AES1Character::BeginPlay()
 {
 	Super::BeginPlay();		 
@@ -124,6 +141,15 @@ void AES1Character::BeginPlay()
 	FollowCamera->SetFieldOfView(DefaultFieldOfView);
 	
 	AttributeComponent->SwitchGate(EES1MovementGate::Jogging);
+	
+	if (PlayerOverlayWidgetClass)
+	{
+		PlayerOverlayWidget = CreateWidget<UES1Overlay>(GetWorld(), PlayerOverlayWidgetClass);
+		if (PlayerOverlayWidget)
+		{
+			PlayerOverlayWidget->AddToViewport();
+		}
+	}
 }
 
 void AES1Character::BeginDestroy()
@@ -163,6 +189,16 @@ void AES1Character::PossessedBy(AController* NewController)
 		CombatComponent->SpawnInventory();
 		LinkAnimLayer();
 	}
+}
+
+void AES1Character::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+	
+	// if (IsValid(CombatComponent))																																																											`b
+	// {
+	// 	CombatComponent->InitializeWeaponWidgets();
+	// }
 }
 
 void AES1Character::Input_Move(const FInputActionValue& InputActionValue)
@@ -245,89 +281,6 @@ void AES1Character::Input_ReloadWeapon()
 	CombatComponent->Initiate_ReloadWeapon();
 }
 
-void AES1Character::Move(const FInputActionValue& Values)
-{
-	FVector2D MovementVector = Values.Get<FVector2D>();
-	
-	if (Controller != nullptr)
-	{
-		const FRotator Rotation = Controller->GetControlRotation();
-		const FRotator YawRotator(0, Rotation.Yaw, 0);
-		
-		const FVector ForwardVector = FRotationMatrix(YawRotator).GetUnitAxis(EAxis::X);
-		const FVector RightVector = FRotationMatrix(YawRotator).GetUnitAxis(EAxis::Y);
-		
-		AddMovementInput(ForwardVector, MovementVector.Y);
-		AddMovementInput(RightVector, MovementVector.X);
-	}
-}
-
-void AES1Character::Look(const FInputActionValue& Values)
-{
-	FVector2D LookDirection = Values.Get<FVector2D>();
-	
-	if (Controller != nullptr)
-	{
-		AddControllerYawInput(LookDirection.X);
-		AddControllerPitchInput(LookDirection.Y);
-	}
-}
-
-void AES1Character::SwitchWeapon(const FInputActionValue& Values)
-{
-	int8 InputNumber = static_cast<int8>(Values.Get<float>());
-	
-	EES1SelectedWeaponSlot SelectedWeaponSlot = static_cast<EES1SelectedWeaponSlot>(InputNumber);
-	
-	// CombatComponent->SwitchEquipment(SelectedWeaponSlot);
-
-	// if (UES1AnimInstance* AnimInstance = Cast<UES1AnimInstance>(GetPlayerMesh()->GetAnimInstance()))
-	// {
-	// 	TSubclassOf<UAnimInstance> LayerAnimClass = AnimInstance->GetEquippedWeaponLocomotion(GetSelectedEquipmentType());
-	//
-	// 	GetPlayerMesh()->LinkAnimClassLayers(LayerAnimClass);
-	// }
-
-}
-
-void AES1Character::AimStart(const FInputActionValue& Values)
-{
-	if (!bIsCrouched)   // crouch 중이면 게이트 유지
-	{
-		MovementGate = EES1MovementGate::Walking;
-	}
-	
-	
-	TargetArmLengthGoal = AimArmLength;
-	bIsInterpCameraBoom = true;
-	SetMovementGate();
-}
-
-void AES1Character::AimComplete(const FInputActionValue& Values)
-{
-	if (!bIsCrouched)
-	{
-		MovementGate = EES1MovementGate::Jogging;
-	}
-	
-	TargetArmLengthGoal = DefaultArmLength;
-	bIsInterpCameraBoom = true;
-	SetMovementGate();
-}
-
-void AES1Character::Crouch(const FInputActionValue& Values)
-{
-	if (!bIsCrouched)
-	{
-		if (bIsFiring) return;
-		Super::Crouch(false);
-	}
-	else
-	{
-		Super::UnCrouch(false);
-	}
-}
-
 void AES1Character::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)
 {
 	Super::OnStartCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
@@ -340,90 +293,3 @@ void AES1Character::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAd
 	RefreshMovementGate();
 }
 
-void AES1Character::Jump(const FInputActionValue& Values)
-{
-	Super::Jump();
-}
-
-void AES1Character::StopJumping(const FInputActionValue& Values)
-{
-	Super::StopJumping();
-}
-
-void AES1Character::UseEquipment(const FInputActionValue& Values)
-{	
-	// if (bIsFiring) return;
-	//
-	// CachedMovementGate = MovementGate;
-	//
-	// if (!bIsCrouched && MovementGate == EES1MovementGate::Jogging)
-	// {
-	// 	MovementGate = EES1MovementGate::Walking;
-	// 	SetMovementGate();
-	// }
-	//
-	// if (CombatComponent)
-	// {
-	// 	if (CombatComponent->UseSelectedEquipment())
-	// 	{
-	// 		UAnimMontage* Montage = CombatComponent->GetSelectedEquipmentMontage(ES1GameplayTags::Character_Action_Fire);
-	// 		
-	// 		if (Montage)
-	// 		{
-	// 			float Duration = PlayAnimMontage(Montage);
-	// 			
-	// 			if (UAnimInstance* AnimInstance = GetPlayerMesh()->GetAnimInstance())
-	// 			{
-	// 				FOnMontageEnded EndDelegate;
-	// 				EndDelegate.BindUObject(this, &ThisClass::OnUseMontageEnded);
-	// 				AnimInstance->Montage_SetEndDelegate(EndDelegate, Montage);
-	// 			}
-	// 		}
-	// 	}		
-	// }	
-}
-
-void AES1Character::Reload(const FInputActionValue& Values)
-{
-	if (CombatComponent)
-	{
-		// UAnimMontage* Montage = CombatComponent->GetSelectedEquipmentMontage(ES1GameplayTags::Character_Action_Reload);
-		// if (Montage)
-		// {
-		// 	PlayAnimMontage(Montage);
-		// 	AES1ProtectedWeapon* Weapon= Cast<AES1ProtectedWeapon>(CombatComponent->GetSelectedEquipment());
-		// 	if (Weapon)
-		// 	{
-		// 		Weapon->Reload();
-		// 	}
-		// }
-	}
-}
-
-void AES1Character::UpdateCameraBoom(float DeltaTime)
-{
-	if (!bIsInterpCameraBoom || !SpringArm) return;
-	
-	const float Current = SpringArm->TargetArmLength;
-	const float New = FMath::FInterpTo(Current, TargetArmLengthGoal, DeltaTime, ArmInterpSpeed);
-	SpringArm->TargetArmLength = New;
-	
-	if (FMath::IsNearlyEqual(New, TargetArmLengthGoal, 0.5f))
-	{
-		SpringArm->TargetArmLength = TargetArmLengthGoal;
-		bIsInterpCameraBoom = false;
-	}
-}
-
-void AES1Character::OnUseMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	MovementGate = bIsCrouched ? EES1MovementGate::Crouching : CachedMovementGate;
-	SetMovementGate();
-}
-
-void AES1Character::SetMovementGate()
-{
-	if (UCharacterMovementComponent* movementComponent = GetCharacterMovement())
-	{
-	}
-}

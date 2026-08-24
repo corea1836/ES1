@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ES1Define.generated.h"
 
 namespace ES1TraceChannel
 {
@@ -32,19 +33,39 @@ enum class EES1RootYawOffsetMode : uint8
 	Hold,
 };
 
-UENUM(BlueprintType)
-enum class EES1SelectedWeaponSlot : uint8
+USTRUCT(BlueprintType)
+struct FReticleParams
 {
-	None,
-	PrimaryWeapon,
-	SecondaryWeapon,
-	SideWeapon,
-	MeleeWeapon,
-	Unarmed,
+	GENERATED_BODY()
+	
+	// Shape Cut Factor 
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float ShapeCutFactor_RoundFired = 0.f;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float ShapeCutFactor_Aiming = 0.f;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float ShapeCutFactor_NotAiming = 0.f;
+	
+	// Scale Factor
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float ScaleFactor_RoundFired = 0.f;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float ScaleFactor_Aiming = 0.f;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float ScaleFactor_NotAiming = 0.f;
+	
+	// Interp Speed 
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float RoundFiredInterpSpeed = 20.f;
+	
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float AimingInterpSpeed = 15.f;
 };
 
-UENUM(BlueprintType)
-enum class EES1MontageGroup : uint8
-{
-	Fire,
-};
+

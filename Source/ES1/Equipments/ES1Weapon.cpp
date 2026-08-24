@@ -22,6 +22,11 @@ AES1Weapon::AES1Weapon()
 	AimFieldOfView = 200.f;
 	TraceRadius = 5.f;
 	FireTime = 0.1f;
+	
+	MagCapacity = 10;
+	Ammo = 5;
+	StartingCarriedAmmo = 10;
+	Sequence = 0;
 }
 
 void AES1Weapon::OnRep_Instigator()
@@ -38,6 +43,26 @@ void AES1Weapon::OnConstruction(const FTransform& Transform)
 USkeletalMeshComponent* AES1Weapon::GetMesh() const
 {
 	return Mesh;
+}
+
+UMaterialInstanceDynamic* AES1Weapon::GetReticleDynamicMaterialInstance()
+{
+	if (!IsValid(DynMatInst_Reticle))
+	{
+		DynMatInst_Reticle = UMaterialInstanceDynamic::Create(ReticleMaterial, this);
+	}
+	
+	return DynMatInst_Reticle;
+}
+
+UMaterialInstanceDynamic* AES1Weapon::GetAmmoCounterDynamicMaterialInstance()
+{
+	if (!IsValid(DynMatInst_AmmoCounter))
+	{
+		DynMatInst_AmmoCounter = UMaterialInstanceDynamic::Create(AmmoCounterMaterial, this);
+	}
+	
+	return DynMatInst_AmmoCounter;
 }
 
 void AES1Weapon::AttachToOwningPawn() const
@@ -75,7 +100,7 @@ void AES1Weapon::WeaponTrace(FHitResult& OutHit, float TraceLength)
 		
 		const FVector EyesWorldDirection = UKismetMathLibrary::GetForwardVector(EyesWorldRotation);
 		
-		const FVector Start = EyesWorldLocation + 15;
+		const FVector Start = EyesWorldLocation + 25;
 		const FVector End = Start + EyesWorldDirection * TraceLength;
 		
 		const bool bHit = GetWorld()->SweepSingleByChannel(
@@ -111,60 +136,32 @@ void AES1Weapon::Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNor
 	TEnumAsByte<EPhysicalSurface> ImpactSurfaceType)
 {
 	FireEffects(ImpactPoint, ImpactNormal, ImpactSurfaceType);
+	
+	if (GetInstigator()->IsLocallyControlled())
+	{
+		Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+		++Sequence;
+	}
+}
+
+void AES1Weapon::Auth_Fire()
+{
+	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+}
+
+void AES1Weapon::Rep_Fire(int32 AuthAmmo)
+{
+	if (GetInstigator()->IsLocallyControlled())
+	{
+		Ammo = AuthAmmo;
+		--Sequence;
+		Ammo -= Sequence;
+	}
 }
 
 void AES1Weapon::BeginPlay()
 {
 	Super::BeginPlay();
-}
-
-TObjectPtr<UAnimMontage> AES1Weapon::GetMontage(const FGameplayTag& GroupTag) const
-{
-	return AnimationData->GetMontageGroup(GroupTag)->AnimMontage;
-}
-
-TObjectPtr<UAnimationAsset> AES1Weapon::GetAnimation(const FGameplayTag& GroupTag) const
-{
-	return AnimationData->GetAnimationGroup(GroupTag)->Animation;
-}
-
-void AES1Weapon::EquipItem()
-{
-}
-
-void AES1Weapon::UnequipItem()
-{
-}
-
-void AES1Weapon::AttachToOwner(FName SocketName)
-{
-	if (ACharacter* OwnerCharacter = Cast<ACharacter>(GetOwner()))
-	{
-		if (USkeletalMeshComponent* CharacterMesh = OwnerCharacter->GetMesh())
-		{
-			AttachToComponent(CharacterMesh, FAttachmentTransformRules(EAttachmentRule::SnapToTarget, true), SocketName);
-		}
-	}
-}
-
-void AES1Weapon::Use()
-{
-	if (bCanUse)
-	{
-		bCanUse = false;
-		
-		GetWorld()->GetTimerManager().SetTimer(UseTimerHandle, this, &ThisClass::ToggleUse, UseInterval, false);
-		UAnimationAsset* UseAnimation = GetAnimation(ES1GameplayTags::Equipment_Weap_Fire);
-		if (UseAnimation)
-		{
-			Mesh->PlayAnimation(UseAnimation, 0.f);
-		}
-	}
-}
-
-void AES1Weapon::ToggleUse()
-{
-	bCanUse = true;
 }
 
 void AES1Weapon::SetMeshVisibilities(APawn* OwningPawn) const

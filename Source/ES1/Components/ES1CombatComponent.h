@@ -7,6 +7,13 @@
 #include "Equipments/ES1Weapon.h"
 #include "ES1CombatComponent.generated.h"
 
+class UES1WeaponData;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FReticleChanged, UMaterialInstanceDynamic*, ReticleDynMatInst, const FReticleParams&, ReticleParams);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAmmoCounterChanged, UMaterialInstanceDynamic*, AmmoCounterDynMatInst, int32, RoundCurrent, int32, RoundsMax);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FRoundFired, int32, RoundsCurrent, int32, RoundsMax);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAimingStatusChanged, bool, bIsAiming);
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class ES1_API UES1CombatComponent : public UActorComponent
 {
@@ -16,7 +23,14 @@ public:
 	// Functions
 	UES1CombatComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
-	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	
+	UFUNCTION(BlueprintPure, Category="ES1|Component")
+	static UES1CombatComponent* FindCombatComponent(const AActor* Actor) { return (IsValid(Actor) ? Actor->FindComponentByClass<UES1CombatComponent>() : nullptr); }
+	
+	TSubclassOf<UAnimInstance> GetCurrentWeaponAnimLayer() const;
+	FORCEINLINE AES1Weapon* GetCurrentWeapon() const { return CurrentWeapon; }
+	FORCEINLINE bool GetIsAiming() const { return bAiming; }
 	
 	void Initiate_SwitchWeapon();
 	void Initiate_FireWeapon_Pressed();
@@ -30,14 +44,23 @@ public:
 	void SpawnInventory();
 	void DestroyInventory();
 	
-	TSubclassOf<UAnimInstance> GetCurrentWeaponAnimLayer() const;
+	void InitializeWeaponWidgets() const;
 	
-	FORCEINLINE AES1Weapon* GetCurrentWeapon() const { return CurrentWeapon; }
-	FORCEINLINE bool GetIsAiming() const { return bIsAiming; }
+	UPROPERTY(BlueprintAssignable)
+	FReticleChanged OnReticleChanged;
+	
+	UPROPERTY(BlueprintAssignable)
+	FAmmoCounterChanged OnAmmoCounterChanged;
+	
+	UPROPERTY(BlueprintAssignable)
+	FRoundFired OnRoundFired;
+	
+	UPROPERTY(BlueprintAssignable)
+	FAimingStatusChanged OnAimingStatusChanged;
 	
 	// Variables
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Weapon")
-	TObjectPtr<class UES1WeaponData> WeaponData;
+	TObjectPtr<UES1WeaponData> WeaponData;
 	
 protected:
 	virtual void BeginPlay() override;
@@ -51,19 +74,19 @@ private:
 	void OnRep_CurrentWeapon(AES1Weapon* LastWeapon);
 	
 	UFUNCTION(Server, Reliable)
-	void Server_Aim(bool bPressed);
+	void Server_Aim(bool bIsPressed);
 	
 	UFUNCTION(Server, Reliable)
 	void Server_FireWeapon(const FHitResult& Hit);
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_FireWeapon(const FHitResult& Hit);
+	void Multicast_FireWeapon(const FHitResult& Hit, int32 AuthAmmo);
 	
 	AES1Weapon* SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass);
 	
 	void FireTimerFinished();
 	
-	void Local_Aim(bool bPressed);
+	void Local_Aim(bool bIsPressed);
 	void Local_FireWeapon();
 	
 	// Variables
@@ -77,19 +100,11 @@ private:
 	TArray<TSubclassOf<AES1Weapon>> DefaultWeaponClasses;
 	
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
-	bool bIsAiming;
+	bool bAiming;
 	
-	bool bIsTriggerPressed;
+	bool bTriggerPressed;
 	FTimerHandle FireTimer;
 	
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
-	bool bIsFiring;
-	
-	
-	
-	
-		
-	UAnimMontage* GetSelectedEquipmentMontage(const FGameplayTag& GroupTag) const;
-	UAnimationAsset* GetSelectedEquipmentAnimation(const FGameplayTag& GroupTag) const;
-	
+	bool bFiring;	
 };

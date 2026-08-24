@@ -44,16 +44,16 @@ protected:
 	EES1MovementGate LastFrameMovementGate;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
-	bool bIsMovementGateChanged;
+	bool bMovementGateChanged;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
-	bool bIsCrouching;
+	bool bCrouching;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
 	bool bLastFrameIsCrouching;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
-	bool bIsCrouchStateChanged;
+	bool bCrouchStateChanged;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
 	bool bUseCrouchRifleUpperBody;
@@ -74,7 +74,7 @@ protected:
 	FVector PivotAcceleration2D;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
-	bool bIsAccelerating;
+	bool bAccelerating;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	float BrakingDecelerationWalking;
@@ -155,13 +155,13 @@ protected:
 	float AccelerationLocomotionAngleWithOffset;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
-	bool bIsJumping;
+	bool bJumping;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
-	bool bIsFalling;
+	bool bFalling;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
-	bool bIsOnAir;
+	bool bOnAir;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
 	float TimeToApex;
