@@ -23,7 +23,9 @@ void UES1LayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	if (MainAnimInstance)
 	{
-		MovementGate = MainAnimInstance->MovementGate;
+		CurrentWeaponType = MainAnimInstance->CurrentWeaponType;
+		
+		MovementGate = MainAnimInstance->CurrentMovementGate;
 		VelocityLocomotionAngle = MainAnimInstance->VelocityLocomotionAngle;
 		AccelerationLocomotionAngle = MainAnimInstance->AccelerationLocomotionAngle;
 		LastFrameVelocityLocomotionDirection = MainAnimInstance->LastFrameVelocityLocomotionDirection;
@@ -31,14 +33,14 @@ void UES1LayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		AccelerationLocomotionDirection = MainAnimInstance->AccelerationLocomotionDirection;
 		Velocity2D = MainAnimInstance->Velocity2D;
 		Acceleration2D = MainAnimInstance->Acceleration2D;
-		bIsAccelerating = MainAnimInstance->bIsAccelerating;
+		bAccelerating = MainAnimInstance->bAccelerating;
 		PivotAcceleration2D = MainAnimInstance->PivotAcceleration2D;
 		LeanAngle = MainAnimInstance->LeanAngle;
 		MaxWalkSpeed = MainAnimInstance->MaxWalkSpeed;
 		
-		bIsCrouching = MainAnimInstance->bIsCrouching;
+		bCrouching = MainAnimInstance->bCrouching;
 		bLastFrameIsCrouching = MainAnimInstance->bLastFrameIsCrouching;
-		bIsCrouchStateChanged = MainAnimInstance->bIsCrouchStateChanged;
+		bCrouchStateChanged = MainAnimInstance->bCrouchStateChanged;
 		
 		DeltaLocation = MainAnimInstance->DeltaLocation;
 		
@@ -53,7 +55,7 @@ void UES1LayerAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		VelocityLocomotionAngleWithOffset = MainAnimInstance->VelocityLocomotionAngleWithOffset;
 		
 		GroundDistance = MainAnimInstance->GroundDistance;
-		bIsOnAir = MainAnimInstance->bIsOnAir;
+		bOnAir = MainAnimInstance->bOnAir;
 		TimeFalling = MainAnimInstance->TimeFalling;
 		
 		AimPitch = MainAnimInstance->AimPitch;

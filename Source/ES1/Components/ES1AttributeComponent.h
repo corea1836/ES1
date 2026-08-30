@@ -12,20 +12,27 @@ class ES1_API UES1AttributeComponent : public UActorComponent
 
 public:	
 	UES1AttributeComponent();
-	
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
-	TObjectPtr<UES1MovementGateData> MovementGateData;
-
-protected:
-	virtual void BeginPlay() override;
-
-public:	
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	
-	FORCEINLINE float GetMaxWalkSpeed(const EES1MovementGate movementTag) const
+	void SwitchGate(const EES1MovementGate MovementGate);
+	
+	FORCEINLINE EES1MovementGate GetCurrentMovementGate() const { return CurrentMovementGate; }
+	
+protected:
+	virtual void BeginPlay() override;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
+	TObjectPtr<UES1MovementGateData> MovementGateData;
+	
+private:
+	// Functions
+	UFUNCTION()
+	void OnRep_MovementGate();
+	
+	FORCEINLINE float GetMaxWalkSpeed(const EES1MovementGate MovementGate) const
 	{
-		return MovementGateData->GetMovementGroup(movementTag)->MaxWalkSpeed;
+		return MovementGateData->GetMovementGroup(MovementGate)->MaxWalkSpeed;
 	}
 	
 	FORCEINLINE float GetMaxAcceleration(const EES1MovementGate movementTag) const
@@ -52,4 +59,8 @@ public:
 	{
 		return MovementGateData->GetMovementGroup(movementTag)->bUseSeparateBrakingFriction;
 	}
+	
+	// Variables
+	UPROPERTY(Transient, BlueprintReadOnly, ReplicatedUsing=OnRep_MovementGate, meta=(AllowPrivateAccess=true))
+	EES1MovementGate CurrentMovementGate;
 };

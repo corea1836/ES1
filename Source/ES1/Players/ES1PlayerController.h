@@ -8,5 +8,4 @@ UCLASS()
 class ES1_API AES1PlayerController : public APlayerController
 {
 	GENERATED_BODY()
-	
 };

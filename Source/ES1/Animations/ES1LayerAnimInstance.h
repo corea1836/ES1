@@ -1,8 +1,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Animation/AnimInstance.h"
 #include "Data/ES1DirectionalAnimations.h"
+#include "Tags/ES1WeaponTags.h"
 #include "ES1LayerAnimInstance.generated.h"
 
 class UES1AnimInstance;
@@ -18,6 +20,9 @@ class ES1_API UES1LayerAnimInstance : public UAnimInstance
 protected:
 	TObjectPtr<UES1AnimInstance> MainAnimInstance;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Anim|Weapon")
+	FGameplayTag CurrentWeaponType = ES1WeaponTags::Weapon_Type_Unarmed;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	EES1MovementGate MovementGate;
 	
@@ -25,7 +30,7 @@ protected:
 	FVector Velocity2D;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
-	bool bIsAccelerating;
+	bool bAccelerating;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	FVector Acceleration2D;
@@ -52,13 +57,13 @@ protected:
 	float MaxWalkSpeed;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
-	bool bIsCrouching;
+	bool bCrouching;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
 	bool bLastFrameIsCrouching;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
-	bool bIsCrouchStateChanged;
+	bool bCrouchStateChanged;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Location Data")
 	float DeltaLocation;
@@ -127,7 +132,7 @@ protected:
 	float GroundDistance;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
-	bool bIsOnAir;
+	bool bOnAir;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
 	float TimeFalling;

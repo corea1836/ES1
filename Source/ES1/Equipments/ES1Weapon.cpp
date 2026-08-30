@@ -1,44 +1,177 @@
 #include "Equipments/ES1Weapon.h"
 
 #include "ES1GameplayTags.h"
+#include "KismetTraceUtils.h"
+#include "GameFramework/Character.h"
+#include "Interfaces/ES1PlayerInterface.h"
+#include "Kismet/KismetMathLibrary.h"
 
 AES1Weapon::AES1Weapon()
 {
-	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("EquipmentMesh"));
+	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
+	bNetUseOwnerRelevancy = true;
+	
+	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>("Mesh");
+	Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+	Mesh->bReceivesDecals = false;
+	Mesh->CastShadow = true;
 	SetRootComponent(Mesh);
+	Mesh->SetHiddenInGame(true);
+	
+	AimFieldOfView = 200.f;
+	TraceRadius = 5.f;
+	FireTime = 0.1f;
+	Damage = 15.f;
+	
+	MagCapacity = 10;
+	Ammo = 5;
+	StartingCarriedAmmo = 10;
+	Sequence = 0;
+	
+	WeaponStatus = ES1WeaponStatus::Idle;
 }
 
 void AES1Weapon::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
-	
-	if (MeshAsset)
+}
+
+USkeletalMeshComponent* AES1Weapon::GetMesh() const
+{
+	return Mesh;
+}
+
+UMaterialInstanceDynamic* AES1Weapon::GetReticleDynamicMaterialInstance()
+{
+	if (!IsValid(DynMatInst_Reticle))
 	{
-		Mesh->SetSkeletalMesh(MeshAsset);
+		DynMatInst_Reticle = UMaterialInstanceDynamic::Create(ReticleMaterial, this);
+	}
+	
+	return DynMatInst_Reticle;
+}
+
+UMaterialInstanceDynamic* AES1Weapon::GetAmmoCounterDynamicMaterialInstance()
+{
+	if (!IsValid(DynMatInst_AmmoCounter))
+	{
+		DynMatInst_AmmoCounter = UMaterialInstanceDynamic::Create(AmmoCounterMaterial, this);
+	}
+	
+	return DynMatInst_AmmoCounter;
+}
+
+void AES1Weapon::AttachToOwningPawn(APawn* Pawn) const
+{
+	if (!IsValid(Pawn) || !Pawn->Implements<UES1PlayerInterface>()) return;
+	
+	SetMeshVisibilities(Pawn);
+	
+	const FName EquippedSocket = IES1PlayerInterface::Execute_GetWeaponEquippedSocket(Pawn, WeaponType);
+	USkeletalMeshComponent* PawnMesh = IES1PlayerInterface::Execute_GetPlayerMesh(Pawn);
+	
+	Mesh->AttachToComponent(PawnMesh, FAttachmentTransformRules::KeepRelativeTransform, EquippedSocket);
+}
+
+void AES1Weapon::DetachFromOwningPawn()
+{
+	Mesh->DetachFromComponent(FDetachmentTransformRules::KeepRelativeTransform);
+	Mesh->SetHiddenInGame(true);
+}
+
+void AES1Weapon::WeaponTrace(FHitResult& OutHit, float TraceLength)
+{
+	FCollisionQueryParams QueryParams;
+	QueryParams.bReturnPhysicalMaterial = true;
+	QueryParams.AddIgnoredActor(GetOwner());
+	
+	FCollisionResponseParams ResponseParams;
+	ResponseParams.CollisionResponse.SetAllChannels(ECR_Ignore);
+	ResponseParams.CollisionResponse.SetResponse(ECC_Pawn, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldStatic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldDynamic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_PhysicsBody, ECR_Block);
+
+	ensure(GetInstigator());
+	if (APlayerController* PC = Cast<APlayerController>(GetInstigator()->GetController()); IsValid(PC))
+	{
+		FVector EyesWorldLocation;
+		FRotator EyesWorldRotation;
+		PC->GetActorEyesViewPoint(EyesWorldLocation, EyesWorldRotation);
+		
+		const FVector EyesWorldDirection = UKismetMathLibrary::GetForwardVector(EyesWorldRotation);
+		
+		const FVector Start = EyesWorldLocation + 25;
+		const FVector End = Start + EyesWorldDirection * TraceLength;
+		
+		const bool bHit = GetWorld()->SweepSingleByChannel(
+			OutHit,
+			Start,
+			End,
+			FQuat::Identity,
+			ES1TraceChannel::ECC_Weapon,
+			FCollisionShape::MakeSphere(TraceRadius),
+			QueryParams,
+			ResponseParams);
+		
+		if (!bHit)
+		{
+			OutHit.ImpactPoint = End;
+		}
+		
+		// DrawDebugSphereTraceSingle(
+		// 	GetWorld(),
+		// 	Start,
+		// 	End,
+		// 	TraceRadius,
+		// 	EDrawDebugTrace::ForDuration,
+		// 	bHit,
+		// 	OutHit,
+		// 	FColor::Green,
+		// 	FColor::Red,
+		// 	5.f);
 	}
 }
 
-void AES1Weapon::EquipItem()
-{
-	Super::EquipItem();
+void AES1Weapon::Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal, TEnumAsByte<EPhysicalSurface> ImpactSurfaceType)
+{	
+	FireEffects(ImpactPoint, ImpactNormal, ImpactSurfaceType);
 	
-	FName AttachSocketName = GetEquipSocketName();
-	AttachToOwner(AttachSocketName);
-}
-
-void AES1Weapon::UnequipItem()
-{
-	Super::UnequipItem();
-	
-	FName AttachSocketName = GetUnequipSocketName();
-	AttachToOwner(AttachSocketName);
-}
-
-void AES1Weapon::Reload()
-{
-	UAnimationAsset* ReloadAnimation = GetAnimation(ES1GameplayTags::Equipment_Weap_Reload);
-	if (ReloadAnimation)
+	if (GetInstigator()->IsLocallyControlled())
 	{
-		Mesh->PlayAnimation(ReloadAnimation, 0.f);
+		Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+		
+		if (!GetInstigator()->HasAuthority())
+		{
+			++Sequence;
+		}
 	}
 }
+
+void AES1Weapon::Auth_Fire()
+{
+	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+}
+
+void AES1Weapon::Rep_Fire(int32 AuthAmmo)
+{
+	if (GetInstigator()->IsLocallyControlled() && !GetInstigator()->HasAuthority())
+	{
+		Ammo = AuthAmmo;
+		--Sequence;
+		Ammo -= Sequence;
+	}
+}
+
+void AES1Weapon::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+void AES1Weapon::SetMeshVisibilities(APawn* OwningPawn) const
+{
+		Mesh->SetHiddenInGame(false);
+}
+
+

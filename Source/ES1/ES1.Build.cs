@@ -13,7 +13,19 @@ public class ES1 : ModuleRules
 			"ES1"
 		});
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "GameplayTags" });
+		PublicDependencyModuleNames.AddRange(new string[]
+		{
+			"Core",
+			"CoreUObject",
+			"Engine",
+			"InputCore",
+			"EnhancedInput",
+			"GameplayTags",
+			"PhysicsCore",
+			"UMG",
+			"Slate",
+			"SlateCore",
+		});
 
 		PrivateDependencyModuleNames.AddRange(new string[] { "AnimGraphRuntime", "AnimationLocomotionLibraryRuntime" });
 

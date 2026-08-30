@@ -3,7 +3,8 @@
 #include "CoreMinimal.h"
 #include "ES1Define.h"
 #include "Animation/AnimInstance.h"
-#include "Data/ES1WeaponLocomotionData.h"
+#include "Characters/ES1Character.h"
+#include "Tags/ES1WeaponTags.h"
 #include "ES1AnimInstance.generated.h"
 
 class UES1WeaponLocomotionData;
@@ -14,40 +15,54 @@ class ES1_API UES1AnimInstance : public UAnimInstance
 	GENERATED_BODY()
 	friend class UES1LayerAnimInstance;
 	
-protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="References")
-	TObjectPtr<AES1Character> Character;
+public:
+	// Functions
+	UFUNCTION()
+	void AnimNotify_CycleWeapon();
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="References")
-	TObjectPtr<UCharacterMovementComponent> MovementComponent;
+	UFUNCTION()
+	void AnimNotify_ReloadWeapon();
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon Data")
-	EES1EquipmentType SelectedEquipment;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<AES1Character> Character;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
-	EES1MovementGate MovementGate;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<UCharacterMovementComponent> CMC;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<UES1CombatComponent> CombatComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<AES1Weapon> CurrentWeapon;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	TObjectPtr<UES1AttributeComponent> AttributeComponent;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
+	EES1MovementGate CurrentMovementGate;
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Anim|Weapon")
+	FGameplayTag CurrentWeaponType = ES1WeaponTags::Weapon_Type_Unarmed;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	EES1MovementGate LastFrameMovementGate;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
-	bool bIsMovementGateChanged;
+	bool bMovementGateChanged;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
-	bool bIsCrouching;
+	bool bCrouching;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
 	bool bLastFrameIsCrouching;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
-	bool bIsCrouchStateChanged;
+	bool bCrouchStateChanged;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Crouch Data")
 	bool bUseCrouchRifleUpperBody;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Locomotion", meta=(AllowPrivateAccess=true))
-	TObjectPtr<UES1WeaponLocomotionData> EquippedWeaponLocomotionData;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	FVector Velocity;
@@ -65,7 +80,7 @@ protected:
 	FVector PivotAcceleration2D;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
-	bool bIsAccelerating;
+	bool bAccelerating;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	float BrakingDecelerationWalking;
@@ -146,13 +161,13 @@ protected:
 	float AccelerationLocomotionAngleWithOffset;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
-	bool bIsJumping;
+	bool bJumping;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
-	bool bIsFalling;
+	bool bFalling;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
-	bool bIsOnAir;
+	bool bOnAir;
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Jump Data")
 	float TimeToApex;
@@ -177,10 +192,6 @@ public:
 	virtual void NativeUpdateAnimation(float DeltaSeconds) override;
 	
 public:
-	FORCEINLINE TSubclassOf<UAnimInstance> GetEquippedWeaponLocomotion(const EES1EquipmentType weaponEnum)
-	{
-		return EquippedWeaponLocomotionData->GetAnimInstanceGroup(weaponEnum)->AnimInstance;
-	}
 	
 	void CalculateLocomotionDirection();
 	float CalculateDirectionFactor();
