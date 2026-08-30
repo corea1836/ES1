@@ -22,17 +22,14 @@ AES1Weapon::AES1Weapon()
 	AimFieldOfView = 200.f;
 	TraceRadius = 5.f;
 	FireTime = 0.1f;
+	Damage = 15.f;
 	
 	MagCapacity = 10;
 	Ammo = 5;
 	StartingCarriedAmmo = 10;
 	Sequence = 0;
-}
-
-void AES1Weapon::OnRep_Instigator()
-{
-	Super::OnRep_Instigator();
-	AttachToOwningPawn();
+	
+	WeaponStatus = ES1WeaponStatus::Idle;
 }
 
 void AES1Weapon::OnConstruction(const FTransform& Transform)
@@ -65,17 +62,22 @@ UMaterialInstanceDynamic* AES1Weapon::GetAmmoCounterDynamicMaterialInstance()
 	return DynMatInst_AmmoCounter;
 }
 
-void AES1Weapon::AttachToOwningPawn() const
+void AES1Weapon::AttachToOwningPawn(APawn* Pawn) const
 {
-	APawn* OwningPawn = GetInstigator();
-	if (!IsValid(OwningPawn) || !OwningPawn->Implements<UES1PlayerInterface>()) return;
+	if (!IsValid(Pawn) || !Pawn->Implements<UES1PlayerInterface>()) return;
 	
-	SetMeshVisibilities(OwningPawn);
+	SetMeshVisibilities(Pawn);
 	
-	const FName EquippedSocket = IES1PlayerInterface::Execute_GetWeaponEquippedSocket(OwningPawn, WeaponType);
-	USkeletalMeshComponent* PawnMesh = IES1PlayerInterface::Execute_GetPlayerMesh(OwningPawn);
+	const FName EquippedSocket = IES1PlayerInterface::Execute_GetWeaponEquippedSocket(Pawn, WeaponType);
+	USkeletalMeshComponent* PawnMesh = IES1PlayerInterface::Execute_GetPlayerMesh(Pawn);
 	
 	Mesh->AttachToComponent(PawnMesh, FAttachmentTransformRules::KeepRelativeTransform, EquippedSocket);
+}
+
+void AES1Weapon::DetachFromOwningPawn()
+{
+	Mesh->DetachFromComponent(FDetachmentTransformRules::KeepRelativeTransform);
+	Mesh->SetHiddenInGame(true);
 }
 
 void AES1Weapon::WeaponTrace(FHitResult& OutHit, float TraceLength)
@@ -132,15 +134,18 @@ void AES1Weapon::WeaponTrace(FHitResult& OutHit, float TraceLength)
 	}
 }
 
-void AES1Weapon::Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal,
-	TEnumAsByte<EPhysicalSurface> ImpactSurfaceType)
-{
+void AES1Weapon::Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal, TEnumAsByte<EPhysicalSurface> ImpactSurfaceType)
+{	
 	FireEffects(ImpactPoint, ImpactNormal, ImpactSurfaceType);
 	
 	if (GetInstigator()->IsLocallyControlled())
 	{
 		Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
-		++Sequence;
+		
+		if (!GetInstigator()->HasAuthority())
+		{
+			++Sequence;
+		}
 	}
 }
 
@@ -151,7 +156,7 @@ void AES1Weapon::Auth_Fire()
 
 void AES1Weapon::Rep_Fire(int32 AuthAmmo)
 {
-	if (GetInstigator()->IsLocallyControlled())
+	if (GetInstigator()->IsLocallyControlled() && !GetInstigator()->HasAuthority())
 	{
 		Ammo = AuthAmmo;
 		--Sequence;

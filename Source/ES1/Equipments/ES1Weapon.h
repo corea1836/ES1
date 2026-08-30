@@ -13,6 +13,16 @@ enum class ES1FireType : uint8
 	SemiAuto UMETA(DisplayName = "SemiAutomatic"),
 };
 
+UENUM(BlueprintType)
+enum class ES1WeaponStatus : uint8
+{
+	Idle, // Weapon doing nothing, can fire/reload/cycle
+	Firing, // Currently firing, can't reload/cycle
+	Reloading, // Currently reloading, can't fire/cycle
+	Cycling, // Currently cycling to the next weapon, can't fire/reload/ cycle
+	Unequipped // On our person, but can't do anything
+};
+
 UCLASS()
 class ES1_API AES1Weapon : public AActor
 {
@@ -21,14 +31,14 @@ class ES1_API AES1Weapon : public AActor
 public:	
 	// Functions
 	AES1Weapon();
-	virtual void OnRep_Instigator() override;
 	virtual void OnConstruction(const FTransform& Transform) override;
 	
 	USkeletalMeshComponent* GetMesh() const;
 	UMaterialInstanceDynamic* GetReticleDynamicMaterialInstance();
 	UMaterialInstanceDynamic* GetAmmoCounterDynamicMaterialInstance();
 		
-	void AttachToOwningPawn() const;
+	void AttachToOwningPawn(APawn* Pawn) const;
+	void DetachFromOwningPawn();
 	void WeaponTrace(FHitResult& OutHit, float TraceLength);
 	
 	void Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal, TEnumAsByte<EPhysicalSurface> ImpactSurfaceType);
@@ -51,6 +61,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|FireType")
 	float FireTime;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Damage")
+	float Damage;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Ammo")
 	int32 MagCapacity;
 	
@@ -65,6 +78,8 @@ public:
 	
 	UPROPERTY(EditDefaultsOnly, Category="ES1|Icon")
 	TObjectPtr<UMaterialInterface> WeaponIcon;
+	
+	ES1WeaponStatus WeaponStatus;
 	
 protected:
 	virtual void BeginPlay() override;

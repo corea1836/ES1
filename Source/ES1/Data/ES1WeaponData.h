@@ -17,6 +17,9 @@ struct FES1WeaponAnim
 	TObjectPtr<UAnimMontage> PlayerReloadMontage = nullptr;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TObjectPtr<UAnimMontage> PlayerEquipMontage = nullptr;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<UAnimationAsset> WeaponFireAnim = nullptr;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)

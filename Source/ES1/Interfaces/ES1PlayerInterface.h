@@ -30,4 +30,16 @@ public:
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	int32 GetReserveAmmo() const;
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void Notify_CycleWeapon();
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void Notify_ReloadWeapon();
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmount);
+	
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	bool DoDamage(float DamageAmount, AActor* DamageInstigator);
 };

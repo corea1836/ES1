@@ -11,12 +11,14 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/ES1AttributeComponent.h"
 #include "Components/ES1CombatComponent.h"
+#include "Components/ES1HealthComponent.h"
 #include "Data/ES1WeaponData.h"
 #include "Equipments/ES1Weapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Tags/ES1WeaponTags.h"
 #include "Equipments/ES1Weapon.h"
+#include "Players/ES1PlayerController.h"
 #include "UI/ES1Overlay.h"
 
 AES1Character::AES1Character()
@@ -40,6 +42,9 @@ AES1Character::AES1Character()
 	
 	CombatComponent = CreateDefaultSubobject<UES1CombatComponent>(TEXT("CombatComponent"));
 	CombatComponent->SetIsReplicated(true);
+	
+	HealthComponent = CreateDefaultSubobject<UES1HealthComponent>(TEXT("HealthComponent"));
+	HealthComponent->SetIsReplicated(true);
 	
 	DefaultFieldOfView = 65.f;
 	
@@ -136,15 +141,48 @@ int32 AES1Character::GetReserveAmmo_Implementation() const
 	return CombatComponent->CurrentReserveAmmo;
 }
 
+void AES1Character::Notify_CycleWeapon_Implementation()
+{
+	CombatComponent->Notify_CycleWeapon();
+}
+
+void AES1Character::Notify_ReloadWeapon_Implementation()
+{
+	CombatComponent->Notify_ReloadWeapon();
+}
+
+void AES1Character::AddAmmo_Implementation(const FGameplayTag& WeaponType, int32 AmmoAmount)
+{
+	if (HasAuthority() && IsValid(CombatComponent))
+	{
+		CombatComponent->AddAmmo(WeaponType, AmmoAmount);
+	}
+}
+
+bool AES1Character::DoDamage_Implementation(float DamageAmount, AActor* DamageInstigator)
+{
+	if (!IsValid(HealthComponent)) return false;
+	
+	HealthComponent->ChangeHealthByAmount(-DamageAmount, DamageInstigator);
+	
+	
+	
+	const int32 MontageSelection = FMath::RandRange(0, HitReacts.Num() - 1);
+	Multicast_HitReact(MontageSelection);
+		
+	return false;
+}
+
 void AES1Character::BeginPlay()
 {
 	Super::BeginPlay();		 
+	
+	HealthComponent->OnDeathStarted.AddDynamic(this, &ThisClass::OnDeathStarted);
 	
 	GetCharacterMovement()->bCanWalkOffLedgesWhenCrouching = true;
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	
 	FollowCamera->SetFieldOfView(DefaultFieldOfView);
-	
 	AttributeComponent->SwitchGate(EES1MovementGate::Jogging);
 	
 	if (PlayerOverlayWidgetClass)
@@ -155,6 +193,9 @@ void AES1Character::BeginPlay()
 			PlayerOverlayWidget->AddToViewport();
 		}
 	}
+	
+	bPawnAlive = true;
+
 }
 
 void AES1Character::BeginDestroy()
@@ -206,8 +247,38 @@ void AES1Character::OnRep_PlayerState()
 	// }
 }
 
+void AES1Character::Multicast_HitReact_Implementation(int32 MontageIndex)
+{
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		if (HitReacts.IsValidIndex(MontageIndex))
+		{
+			GetMesh()->GetAnimInstance()->Montage_Play(HitReacts[MontageIndex]);
+		}
+	}
+}
+
+void AES1Character::OnDeathStarted()
+{
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		DeathEffects();
+		if (AES1PlayerController* PC = Cast<AES1PlayerController>(GetController()); IsValid(PC))
+		{
+			DisableInput(PC);
+			if (PC->IsLocalController()) 
+				bPawnAlive = false;
+		}
+	}
+	
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, ECollisionResponse::ECR_Ignore);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ES1TraceChannel::ECC_Weapon, ECollisionResponse::ECR_Ignore);
+	GetMesh()->SetCollisionResponseToChannel(ES1TraceChannel::ECC_Weapon, ECollisionResponse::ECR_Ignore);
+}
+
 void AES1Character::Input_Move(const FInputActionValue& InputActionValue)
 {
+	if (!bPawnAlive) return;
 	const FVector2D InputAxisVector = InputActionValue.Get<FVector2D>();
 	const FRotator Rotation = GetControlRotation();
 	const FRotator YawRotation(0.f, Rotation.Yaw, 0.f);
@@ -221,6 +292,7 @@ void AES1Character::Input_Move(const FInputActionValue& InputActionValue)
 
 void AES1Character::Input_Look(const FInputActionValue& InputActionValue)
 {
+	if (!bPawnAlive) return;
 	const FVector2D InputAxisVector = InputActionValue.Get<FVector2D>();
 	
 	if (IsValid(Controller))
@@ -232,6 +304,7 @@ void AES1Character::Input_Look(const FInputActionValue& InputActionValue)
 
 void AES1Character::Input_Crouch()
 {
+	if (!bPawnAlive) return;
 	if (UCharacterMovementComponent* CMC = GetCharacterMovement(); IsValid(CMC))
 	{
 		CMC->bWantsToCrouch = !CMC->bWantsToCrouch;
@@ -240,6 +313,7 @@ void AES1Character::Input_Crouch()
 
 void AES1Character::Input_Jump()
 {
+	if (!bPawnAlive) return;
 	UCharacterMovementComponent* CMC = GetCharacterMovement();
 	
 	if (!IsValid(CMC)) return;
@@ -256,33 +330,39 @@ void AES1Character::Input_Jump()
 
 void AES1Character::Input_SwitchWeapon()
 {
+	if (!bPawnAlive) return;
 	CombatComponent->Initiate_SwitchWeapon();
 }
 
 void AES1Character::Input_FireWeapon_Pressed()
 {
+	if (!bPawnAlive) return;
 	CombatComponent->Initiate_FireWeapon_Pressed();
 }
 
 void AES1Character::Input_FireWeapon_Released()
 {
+	if (!bPawnAlive) return;
 	CombatComponent->Initiate_FireWeapon_Released();
 }
 
 void AES1Character::Input_Aim_Pressed()
 {
+	if (!bPawnAlive) return;
 	CombatComponent->Initiate_Aim_Pressed();
 	OnAim(true);
 }
 
 void AES1Character::Input_Aim_Released()
 {
+	if (!bPawnAlive) return;
 	CombatComponent->Initiate_Aim_Released();
 	OnAim(false);
 }
 
 void AES1Character::Input_ReloadWeapon()
 {
+	if (!bPawnAlive) return;
 	CombatComponent->Initiate_ReloadWeapon();
 }
 

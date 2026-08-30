@@ -273,6 +273,20 @@ void UES1AnimInstance::UpdateRootYawOffset(float DeltaSeconds)
 	RootYawOffsetMode = EES1RootYawOffsetMode::BlendOut;
 }
 
+void UES1AnimInstance::AnimNotify_CycleWeapon()
+{
+	if (!IsValid(Character)) return;
+	
+	Character->Execute_Notify_CycleWeapon(TryGetPawnOwner());
+}
+
+void UES1AnimInstance::AnimNotify_ReloadWeapon()
+{
+	if (!IsValid(Character)) return;
+	
+	Character->Execute_Notify_ReloadWeapon(TryGetPawnOwner());
+}
+
 void UES1AnimInstance::ProcessTurnCurveYaw()
 {
 	LastFrameTurnYawCurveValue = TurnYawCurveValue;

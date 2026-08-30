@@ -16,6 +16,12 @@ class ES1_API UES1AnimInstance : public UAnimInstance
 	friend class UES1LayerAnimInstance;
 	
 public:
+	// Functions
+	UFUNCTION()
+	void AnimNotify_CycleWeapon();
+	
+	UFUNCTION()
+	void AnimNotify_ReloadWeapon();
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")

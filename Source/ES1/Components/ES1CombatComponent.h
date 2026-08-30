@@ -40,12 +40,21 @@ public:
 	void Initiate_Aim_Pressed();
 	void Initiate_Aim_Released();
 	
+	void Notify_CycleWeapon();
+	void Notify_ReloadWeapon();
+	
 	void Equip(AES1Weapon* Weapon);
+	void EquipWeapon(AES1Weapon* Weapon);
+	
+	UFUNCTION(Server, Reliable)
+	void Server_EquipWeapon(AES1Weapon* Weapon);
 	
 	void SpawnInventory();
 	void DestroyInventory();
 	
 	void InitializeWeaponWidgets() const;
+	
+	void AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmount);
 	
 	UPROPERTY(BlueprintAssignable)
 	FReticleChanged OnReticleChanged;
@@ -70,8 +79,13 @@ public:
 	int32 CurrentReserveAmmo;
 	
 protected:
+	// Functions
 	virtual void BeginPlay() override;
 	
+	UFUNCTION()
+	void BlendOut_CycleWeapon(UAnimMontage* Montage, bool bInterrupted);
+	
+	// Variables
 	UPROPERTY(EditDefaultsOnly, Category="ES1|Weapon")
 	float TraceLength;
 	
@@ -99,6 +113,29 @@ private:
 	void Local_Aim(bool bIsPressed);
 	void Local_FireWeapon();
 	
+	int32 AdvancedWeaponIndex();
+	
+	void Local_CycleWeapon(int32 WeaponIndex);
+	
+	UFUNCTION(Server, Reliable)
+	void Server_CycleWeapon(int32 WeaponIndex);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_CycleWeapon(int32 WeaponIndex);
+	
+	void SetCurrentWeapon(AES1Weapon* NewWeapon, AES1Weapon* LastWeapon);
+	
+	void Local_ReloadWeapon();
+	
+	UFUNCTION(Server, Reliable)
+	void Server_ReloadWeapon();
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_ReloadWeapon();
+	
+	UFUNCTION(Client, Reliable)
+	void Client_ReloadWeapon(int32 NewWeaponAmmo, int32 NewCarriedAmmo);
+	
 	// Variables
 	UPROPERTY(Transient, BlueprintReadOnly, ReplicatedUsing=OnRep_CurrentWeapon, meta=(AllowPrivateAccess=true))
 	TObjectPtr<AES1Weapon> CurrentWeapon;
@@ -119,4 +156,6 @@ private:
 	bool bFiring;	
 	
 	TMap<FGameplayTag, int32> ReserveAmmo;
+	
+	int32 Local_WeaponIndex;
 };

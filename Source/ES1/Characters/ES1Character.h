@@ -7,6 +7,10 @@
 #include "Interfaces/ES1PlayerInterface.h"
 #include "ES1Character.generated.h"
 
+class UInputAction;
+class UInputMappingContext;
+class UES1HealthComponent;
+class UES1AttributeComponent;
 class UES1Overlay;
 enum class EES1MovementGate : uint8;
 enum class EES1EquipmentType : uint8;
@@ -42,14 +46,30 @@ public:
 	virtual void WeaponReplicated_Implementation() override;
 	virtual AES1Weapon* GetCurrentWeapon_Implementation() override;
 	virtual int32 GetReserveAmmo_Implementation() const override;
+	virtual void Notify_CycleWeapon_Implementation() override;
+	virtual void Notify_ReloadWeapon_Implementation() override;
+	virtual void AddAmmo_Implementation(const FGameplayTag& WeaponType, int32 AmmoAmount) override;
+	virtual bool DoDamage_Implementation(float DamageAmount, AActor* DamageInstigator) override;
 	
 	// Variables
 	UPROPERTY(BlueprintAssignable)
 	FWeaponFirstReplicated OnWeaponFirstReplicated;
 	
+	UPROPERTY(EditDefaultsOnly, Category="ES1|HitReact")
+	TArray<TObjectPtr<UAnimMontage>> HitReacts;
+		
 protected:
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnAim(bool bIsAiming);
+	
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_HitReact(int32 MontageIndex);
+	
+	UFUNCTION()
+	void OnDeathStarted();
+	
+	UFUNCTION(BlueprintImplementableEvent)
+	void DeathEffects();
 	
 private:	
 	void Input_Move(const FInputActionValue& InputActionValue);
@@ -80,13 +100,16 @@ private:
 	TObjectPtr<UES1CombatComponent> CombatComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
-	TObjectPtr<class UES1AttributeComponent> AttributeComponent;
+	TObjectPtr<UES1AttributeComponent> AttributeComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UES1HealthComponent> HealthComponent;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
-	TObjectPtr<class UInputMappingContext> ES1IMC;
+	TObjectPtr<UInputMappingContext> ES1IMC;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
-	TObjectPtr<class UInputAction> MoveAction;
+	TObjectPtr<UInputAction> MoveAction;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UInputAction> LookAction;
@@ -116,4 +139,6 @@ private:
 	TObjectPtr<UES1Overlay> PlayerOverlayWidget;
 	
 	bool bWeaponFirstReplicated;
+
+	bool bPawnAlive;
 };
