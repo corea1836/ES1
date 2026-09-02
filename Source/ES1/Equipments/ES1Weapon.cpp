@@ -5,6 +5,7 @@
 #include "GameFramework/Character.h"
 #include "Interfaces/ES1PlayerInterface.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Types/ES1CoreTypes.h"
 
 AES1Weapon::AES1Weapon()
 {

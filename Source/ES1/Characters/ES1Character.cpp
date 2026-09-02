@@ -4,8 +4,6 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
-#include "ES1Define.h"
-#include "ES1GameplayTags.h"
 #include "Animations/ES1AnimInstance.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/CapsuleComponent.h"
@@ -15,10 +13,8 @@
 #include "Data/ES1WeaponData.h"
 #include "Equipments/ES1Weapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "Tags/ES1WeaponTags.h"
-#include "Equipments/ES1Weapon.h"
 #include "Players/ES1PlayerController.h"
+#include "Types/ES1CoreTypes.h"
 #include "UI/ES1Overlay.h"
 
 AES1Character::AES1Character()

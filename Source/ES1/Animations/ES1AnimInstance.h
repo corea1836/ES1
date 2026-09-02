@@ -1,10 +1,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1Define.h"
 #include "Animation/AnimInstance.h"
 #include "Characters/ES1Character.h"
 #include "Tags/ES1WeaponTags.h"
+#include "Types/ES1LocomotionTypes.h"
 #include "ES1AnimInstance.generated.h"
 
 class UES1WeaponLocomotionData;

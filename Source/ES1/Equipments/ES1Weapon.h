@@ -1,9 +1,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1Define.h"
 #include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
+#include "UI/ES1Reticle.h"
 #include "ES1Weapon.generated.h"
 
 UENUM(BlueprintType)
@@ -74,7 +74,7 @@ public:
 	int32 StartingCarriedAmmo;
 
 	UPROPERTY(EditDefaultsOnly, Category="ES1|UI|Reticle")
-	FReticleParams ReticleParams;
+	FES1ReticleParams ReticleParams;
 	
 	UPROPERTY(EditDefaultsOnly, Category="ES1|Icon")
 	TObjectPtr<UMaterialInterface> WeaponIcon;
