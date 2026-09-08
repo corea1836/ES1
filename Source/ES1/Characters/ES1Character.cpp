@@ -10,6 +10,8 @@
 #include "Components/ES1AttributeComponent.h"
 #include "Components/ES1CombatComponent.h"
 #include "Components/ES1HealthComponent.h"
+#include "Components/ES1InteractableComponent.h"
+#include "Components/ES1InteractorComponent.h"
 #include "Data/ES1WeaponData.h"
 #include "Equipments/ES1Weapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -41,6 +43,10 @@ AES1Character::AES1Character()
 	
 	HealthComponent = CreateDefaultSubobject<UES1HealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->SetIsReplicated(true);
+
+	InteractorComponent = CreateDefaultSubobject<UES1InteractorComponent>(TEXT("InteractorComponent"));
+	InteractableComponent = CreateDefaultSubobject<UES1InteractableComponent>(TEXT("InteractableComponent"));
+	InteractableComponent->SetupAttachment(GetCapsuleComponent());
 	
 	DefaultFieldOfView = 65.f;
 	
@@ -216,7 +222,6 @@ void AES1Character::RefreshMovementGate()
 {
 	EES1MovementGate Gate;
 	if (GetCharacterMovement()->IsCrouching()) Gate = EES1MovementGate::Crouching;
-	else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
 	else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
 	else Gate = EES1MovementGate::Jogging;
 	

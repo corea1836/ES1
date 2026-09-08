@@ -7,6 +7,8 @@
 #include "Interfaces/ES1PlayerInterface.h"
 #include "ES1Character.generated.h"
 
+class UES1InteractableComponent;
+class UES1InteractorComponent;
 class UInputAction;
 class UInputMappingContext;
 class UES1HealthComponent;
@@ -104,6 +106,12 @@ private:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UES1HealthComponent> HealthComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UES1InteractorComponent> InteractorComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UES1InteractableComponent> InteractableComponent;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UInputMappingContext> ES1IMC;

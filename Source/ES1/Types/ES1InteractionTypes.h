@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1InteractTypes.generated.h"
+#include "ES1InteractionTypes.generated.h"
 
 UENUM(BlueprintType)
 enum class ES1FocusState :uint8
