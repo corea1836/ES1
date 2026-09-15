@@ -51,6 +51,7 @@ AES1Character::AES1Character()
 	DefaultFieldOfView = 65.f;
 	
 	bWeaponFirstReplicated = false;
+	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 }
 
 
@@ -133,7 +134,7 @@ void AES1Character::WeaponReplicated_Implementation()
 	}
 }
 
-AES1Weapon* AES1Character::GetCurrentWeapon_Implementation()
+AES1BaseWeapon* AES1Character::GetCurrentWeapon_Implementation()
 {
 	return CombatComponent->GetCurrentWeapon();
 }
@@ -166,8 +167,6 @@ bool AES1Character::DoDamage_Implementation(float DamageAmount, AActor* DamageIn
 	if (!IsValid(HealthComponent)) return false;
 	
 	HealthComponent->ChangeHealthByAmount(-DamageAmount, DamageInstigator);
-	
-	
 	
 	const int32 MontageSelection = FMath::RandRange(0, HitReacts.Num() - 1);
 	Multicast_HitReact(MontageSelection);

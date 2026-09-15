@@ -18,7 +18,7 @@ enum class EES1MovementGate : uint8;
 enum class EES1EquipmentType : uint8;
 struct FInputActionValue;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWeaponFirstReplicated, AES1Weapon*, Weapon);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FWeaponFirstReplicated, AES1BaseWeapon*, Weapon);
 
 UCLASS()
 class ES1_API AES1Character : public ACharacter, public IES1PlayerInterface
@@ -46,7 +46,7 @@ public:
 	virtual FName GetWeaponEquippedSocket_Implementation(const FGameplayTag& WeaponType) const override;
 	virtual USkeletalMeshComponent* GetPlayerMesh_Implementation() const override;
 	virtual void WeaponReplicated_Implementation() override;
-	virtual AES1Weapon* GetCurrentWeapon_Implementation() override;
+	virtual AES1BaseWeapon* GetCurrentWeapon_Implementation() override;
 	virtual int32 GetReserveAmmo_Implementation() const override;
 	virtual void Notify_CycleWeapon_Implementation() override;
 	virtual void Notify_ReloadWeapon_Implementation() override;

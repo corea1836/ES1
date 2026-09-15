@@ -1,27 +1,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ES1BaseWeapon.h"
 #include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
 #include "UI/ES1Reticle.h"
 #include "ES1Weapon.generated.h"
-
-UENUM(BlueprintType)
-enum class ES1FireType : uint8
-{
-	Auto UMETA(DisplayName = "Automatic"),
-	SemiAuto UMETA(DisplayName = "SemiAutomatic"),
-};
-
-UENUM(BlueprintType)
-enum class ES1WeaponStatus : uint8
-{
-	Idle, // Weapon doing nothing, can fire/reload/cycle
-	Firing, // Currently firing, can't reload/cycle
-	Reloading, // Currently reloading, can't fire/cycle
-	Cycling, // Currently cycling to the next weapon, can't fire/reload/ cycle
-	Unequipped // On our person, but can't do anything
-};
 
 UCLASS()
 class ES1_API AES1Weapon : public AActor
@@ -91,10 +75,10 @@ private:
 	// Functions
 	void SetMeshVisibilities(APawn* OwningPawn) const;
 	
+	// Variables
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1 | Mesh",  meta=(AllowPrivateAccess=true))
 	TObjectPtr<USkeletalMeshComponent> Mesh;
-		
-	// Variables
+
 	int32 Sequence;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))

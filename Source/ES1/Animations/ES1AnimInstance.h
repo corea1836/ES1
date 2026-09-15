@@ -23,6 +23,8 @@ public:
 	UFUNCTION()
 	void AnimNotify_ReloadWeapon();
 
+	void SetFireTriggerPressed(bool bPressed) { bFireTriggerPressed = bPressed; }
+
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
 	TObjectPtr<AES1Character> Character;
@@ -34,7 +36,7 @@ protected:
 	TObjectPtr<UES1CombatComponent> CombatComponent;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
-	TObjectPtr<AES1Weapon> CurrentWeapon;
+	TObjectPtr<AES1BaseWeapon> CurrentWeapon;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
 	TObjectPtr<UES1AttributeComponent> AttributeComponent;
@@ -43,8 +45,14 @@ protected:
 	EES1MovementGate CurrentMovementGate;
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Anim|Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Combat|Weapon")
 	FGameplayTag CurrentWeaponType = ES1WeaponTags::Weapon_Type_Unarmed;
+
+	UPROPERTY(BlueprintReadWrite, Category="ES1|Combat")
+	bool bFireTriggerPressed;
+	
+	UPROPERTY(BlueprintReadWrite, Category="ES1|Combat")
+	TMap<FGameplayTag, TObjectPtr<UAnimSequence>> FireBlendAnimation;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	EES1MovementGate LastFrameMovementGate;

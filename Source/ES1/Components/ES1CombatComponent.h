@@ -3,10 +3,10 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
-#include "Equipments/ES1Weapon.h"
 #include "ES1CombatComponent.generated.h"
 
 class UES1WeaponData;
+class AES1BaseWeapon;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FReticleChanged, UMaterialInstanceDynamic*, ReticleDynMatInst, const FES1ReticleParams&, ReticleParams);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAmmoCounterChanged, UMaterialInstanceDynamic*, AmmoCounterDynMatInst, int32, RoundCurrent, int32, RoundsMax);
@@ -29,8 +29,9 @@ public:
 	static UES1CombatComponent* FindCombatComponent(const AActor* Actor) { return (IsValid(Actor) ? Actor->FindComponentByClass<UES1CombatComponent>() : nullptr); }
 	
 	TSubclassOf<UAnimInstance> GetCurrentWeaponAnimLayer() const;
-	FORCEINLINE AES1Weapon* GetCurrentWeapon() const { return CurrentWeapon; }
+	FORCEINLINE AES1BaseWeapon* GetCurrentWeapon() const { return CurrentWeapon; }
 	FORCEINLINE bool GetIsAiming() const { return bAiming; }
+	FORCEINLINE bool GetbFireTriggerPressed() const { return bFireTriggerPressed; }
 	
 	void Initiate_SwitchWeapon();
 	void Initiate_FireWeapon_Pressed();
@@ -42,11 +43,11 @@ public:
 	void Notify_CycleWeapon();
 	void Notify_ReloadWeapon();
 	
-	void Equip(AES1Weapon* Weapon);
-	void EquipWeapon(AES1Weapon* Weapon);
+	void Equip(AES1BaseWeapon* Weapon);
+	void EquipWeapon(AES1BaseWeapon* Weapon);
 	
 	UFUNCTION(Server, Reliable)
-	void Server_EquipWeapon(AES1Weapon* Weapon);
+	void Server_EquipWeapon(AES1BaseWeapon* Weapon);
 	
 	void SpawnInventory();
 	void DestroyInventory();
@@ -54,6 +55,8 @@ public:
 	void InitializeWeaponWidgets() const;
 	
 	void AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmount);
+
+	void TraceUnderCrosshairs(FHitResult& TraceHitResult);
 	
 	UPROPERTY(BlueprintAssignable)
 	FReticleChanged OnReticleChanged;
@@ -68,7 +71,7 @@ public:
 	FAimingStatusChanged OnAimingStatusChanged;
 	
 	UPROPERTY(BlueprintAssignable)
-	FCurrentReserveAmmoChanged OnCurrentReserveeAmmoChanged;
+	FCurrentReserveAmmoChanged OnCurrentReserveAmmoChanged;
 	
 	// Variables
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Weapon")
@@ -91,7 +94,7 @@ protected:
 private:	
 	// Functions
 	UFUNCTION()
-	void OnRep_CurrentWeapon(AES1Weapon* LastWeapon);
+	void OnRep_CurrentWeapon(AES1BaseWeapon* LastWeapon);
 	
 	UFUNCTION()
 	void OnRep_CurrentReserveAmmo();
@@ -100,17 +103,24 @@ private:
 	void Server_Aim(bool bIsPressed);
 	
 	UFUNCTION(Server, Reliable)
-	void Server_FireWeapon(const FHitResult& Hit);
+	void Server_FireWeaponPressed(const FVector_NetQuantize& TraceHitTarget);
+
+	UFUNCTION(Server, Reliable)
+	void Server_FireWeaponReleased();
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_FireWeapon(const FHitResult& Hit, int32 AuthAmmo);
+	void Multicast_FireWeaponPressed(const FVector_NetQuantize& TraceHitTarget);
+
+	void PlayFireWeapon(const FVector_NetQuantize& TraceHitTarget);
 	
-	AES1Weapon* SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass);
+	AES1BaseWeapon* SpawnWeapon(TSubclassOf<AES1BaseWeapon> WeaponClass);
 	
 	void FireTimerFinished();
 	
 	void Local_Aim(bool bIsPressed);
-	void Local_FireWeapon();
+	
+	void Local_FireWeaponPressed();
+	void Local_FireWeaponReleased();
 	
 	int32 AdvancedWeaponIndex();
 	
@@ -122,7 +132,7 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 	void Multicast_CycleWeapon(int32 WeaponIndex);
 	
-	void SetCurrentWeapon(AES1Weapon* NewWeapon, AES1Weapon* LastWeapon);
+	void SetCurrentWeapon(AES1BaseWeapon* NewWeapon, AES1BaseWeapon* LastWeapon);
 	
 	void Local_ReloadWeapon();
 	
@@ -137,24 +147,25 @@ private:
 	
 	// Variables
 	UPROPERTY(Transient, BlueprintReadOnly, ReplicatedUsing=OnRep_CurrentWeapon, meta=(AllowPrivateAccess=true))
-	TObjectPtr<AES1Weapon> CurrentWeapon;
+	TObjectPtr<AES1BaseWeapon> CurrentWeapon;
 	
 	UPROPERTY(Transient, Replicated)
-	TArray<AES1Weapon*> WeaponInventory;
+	TArray<AES1BaseWeapon*> WeaponInventory;
 	
 	UPROPERTY(EditDefaultsOnly, Category="ES1|Weapon")
-	TArray<TSubclassOf<AES1Weapon>> DefaultWeaponClasses;
+	TArray<TSubclassOf<AES1BaseWeapon>> DefaultWeaponClasses;
 	
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
 	bool bAiming;
-	
-	bool bTriggerPressed;
-	FTimerHandle FireTimer;
-	
+
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
-	bool bFiring;	
+	bool bFireTriggerPressed;
+	FTimerHandle FireTimer;
 	
 	TMap<FGameplayTag, int32> ReserveAmmo;
 	
 	int32 Local_WeaponIndex;
+
+	float RemoteFireFXWaitTIme = 0.f;
+	FVector_NetQuantize HitTarget;
 };

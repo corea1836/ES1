@@ -19,44 +19,44 @@ void UES1Reticle::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 	
-	Image_Reticle->SetRenderOpacity(0.f);
-	Image_AmmoCounter->SetRenderOpacity(0.f);
-	_BaseCornerScaleFactor_RoundFired = 0.f;
-	_BaseShapeCutFactor_RoundFired = 0.f;
-	_BaseCornerScaleFactor_Aiming = 0.f;
-	_BaseShapeCutFactor_Aiming = 0.f;
-	bAiming = false;
-	
-	GetOwningPlayer()->OnPossessedPawnChanged.AddDynamic(this, &ThisClass::OnPossessedPawnChanged);
-	
-	AES1Character* Character = Cast<AES1Character>(GetOwningPlayer()->GetPawn());
-	if (!IsValid(Character)) return;
-	
-	OnPossessedPawnChanged(nullptr, Character);
-	
-	if (Character->HasWeaponFirstReplicated())
-	{
-		AES1Weapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
-		
-		if (IsValid(Weapon))
-		{
-			OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
-			OnAmmoCounterChanged(Weapon->GetAmmoCounterDynamicMaterialInstance(), Weapon->Ammo, Weapon->MagCapacity);
-		}
-	}
-	else
-	{
-		Character->OnWeaponFirstReplicated.AddDynamic(this, &ThisClass::OnWeaponFirstReplicated);
-	}
-	
-	if (Character->HasAuthority())
-	{
-		AES1Weapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
-		
-		if (!IsValid(Weapon)) return;
-		OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
-		OnAmmoCounterChanged(Weapon->GetAmmoCounterDynamicMaterialInstance(), Weapon->Ammo, Weapon->MagCapacity);
-	}
+	// Image_Reticle->SetRenderOpacity(0.f);
+	// Image_AmmoCounter->SetRenderOpacity(0.f);
+	// _BaseCornerScaleFactor_RoundFired = 0.f;
+	// _BaseShapeCutFactor_RoundFired = 0.f;
+	// _BaseCornerScaleFactor_Aiming = 0.f;
+	// _BaseShapeCutFactor_Aiming = 0.f;
+	// bAiming = false;
+	//
+	// GetOwningPlayer()->OnPossessedPawnChanged.AddDynamic(this, &ThisClass::OnPossessedPawnChanged);
+	//
+	// AES1Character* Character = Cast<AES1Character>(GetOwningPlayer()->GetPawn());
+	// if (!IsValid(Character)) return;
+	//
+	// OnPossessedPawnChanged(nullptr, Character);
+	//
+	// if (Character->HasWeaponFirstReplicated())
+	// {
+	// 	AES1Weapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
+	// 	
+	// 	if (IsValid(Weapon))
+	// 	{
+	// 		OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
+	// 		OnAmmoCounterChanged(Weapon->GetAmmoCounterDynamicMaterialInstance(), Weapon->Ammo, Weapon->MagCapacity);
+	// 	}
+	// }
+	// else
+	// {
+	// 	Character->OnWeaponFirstReplicated.AddDynamic(this, &ThisClass::OnWeaponFirstReplicated);
+	// }
+	//
+	// if (Character->HasAuthority())
+	// {
+	// 	AES1Weapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
+	// 	
+	// 	if (!IsValid(Weapon)) return;
+	// 	OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
+	// 	OnAmmoCounterChanged(Weapon->GetAmmoCounterDynamicMaterialInstance(), Weapon->Ammo, Weapon->MagCapacity);
+	// }
 }
 
 void UES1Reticle::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)

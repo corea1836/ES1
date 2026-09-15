@@ -14,7 +14,7 @@ AES1Weapon::AES1Weapon()
 	bNetUseOwnerRelevancy = true;
 	
 	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>("Mesh");
-	Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::OnlyTickPoseWhenRendered;
+	Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	Mesh->bReceivesDecals = false;
 	Mesh->CastShadow = true;
 	SetRootComponent(Mesh);
@@ -103,7 +103,7 @@ void AES1Weapon::WeaponTrace(FHitResult& OutHit, float TraceLength)
 		
 		const FVector EyesWorldDirection = UKismetMathLibrary::GetForwardVector(EyesWorldRotation);
 		
-		const FVector Start = EyesWorldLocation + 25;
+		const FVector Start = EyesWorldLocation + EyesWorldDirection * 25.f;
 		const FVector End = Start + EyesWorldDirection * TraceLength;
 		
 		const bool bHit = GetWorld()->SweepSingleByChannel(
@@ -172,7 +172,7 @@ void AES1Weapon::BeginPlay()
 
 void AES1Weapon::SetMeshVisibilities(APawn* OwningPawn) const
 {
-		Mesh->SetHiddenInGame(false);
+	Mesh->SetHiddenInGame(false);
 }
 
 

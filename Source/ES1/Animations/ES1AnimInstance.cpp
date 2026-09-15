@@ -118,6 +118,7 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	}
 	
 	AimPitch = FRotator::NormalizeAxis(TryGetPawnOwner()->GetBaseAimRotation().Pitch);
+	bFireTriggerPressed = CombatComponent->GetbFireTriggerPressed();
 
 	FString AccelerationString = FString::Printf(TEXT("Acceleration: %s"), *Acceleration2D.ToString());
 	// GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Green, AccelerationString);
