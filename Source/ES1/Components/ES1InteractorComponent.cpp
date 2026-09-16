@@ -94,11 +94,11 @@ void UES1InteractorComponent::Refresh()
 	FocusedComponent = NewFocus;
 
 	const FQuat Q = ViewRotation.Quaternion();
-	DrawDebugLine(GetWorld(), EyeLocation, End, FColor::Silver, false, 0.06f, 0, 1.f);
-	DrawDebugCircle(GetWorld(), End, CandidateRadius, 24, FColor::Blue, false, 0.06f, 0, 1.f,
-					Q.GetRightVector(), Q.GetUpVector(), false);
-	DrawDebugCircle(GetWorld(), End, FocusRadius, 16, FColor::Green, false, 0.06f, 0, 1.f,
-					Q.GetRightVector(), Q.GetUpVector(), false);
+	// DrawDebugLine(GetWorld(), EyeLocation, End, FColor::Silver, false, 0.06f, 0, 1.f);
+	// DrawDebugCircle(GetWorld(), End, CandidateRadius, 24, FColor::Blue, false, 0.06f, 0, 1.f,
+	// 				Q.GetRightVector(), Q.GetUpVector(), false);
+	// DrawDebugCircle(GetWorld(), End, FocusRadius, 16, FColor::Green, false, 0.06f, 0, 1.f,
+	// 				Q.GetRightVector(), Q.GetUpVector(), false);
 }
 
 bool UES1InteractorComponent::IsVisibleFrom(const FVector& EyeLocation, UES1InteractableComponent* Interactable) const

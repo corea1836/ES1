@@ -4,24 +4,26 @@
 #include "Data/ES1WeaponData.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
+#include "Types/ES1CoreTypes.h"
 
 UES1CombatComponent::UES1CombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	
-	TraceLength = 20'000;
 	bAiming = false;
 	bFireTriggerPressed = false;
 	Local_WeaponIndex = 0;
-	TraceLength = 80000.f;
+
+	BaseTraceLength = 20'000;
+	BaseTraceRadius = 5.f;
 }
 
 void UES1CombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	FHitResult HitResult;
-	TraceUnderCrosshairs(HitResult);
+	
+	FHitResult Hit;
+	TraceUnderCrosshairs(Hit);
 }
 
 void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -236,43 +238,54 @@ void UES1CombatComponent::AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmou
 	// }
 }
 
-void UES1CombatComponent::TraceUnderCrosshairs(FHitResult& TraceHitResult)
+void UES1CombatComponent::TraceUnderCrosshairs(FHitResult& OutHit)
 {
-	if (!IsValid(GEngine) || !IsValid(GEngine->GameViewport)) return;
+	AES1Character* Character = Cast<AES1Character>(GetOwner());
+	if (!IsValid(Character)) return;
+
+	UCameraComponent* FollowCamera = Character->GetFollowCamera();
+	if (!IsValid(FollowCamera)) return;
+
+	float TraceLength = IsValid(CurrentWeapon) ? CurrentWeapon->TraceLength : BaseTraceLength;
+	float TraceRadius = IsValid(CurrentWeapon) ? CurrentWeapon->TraceRadius : BaseTraceRadius;
+
+	const FVector CameraLocation = FollowCamera->GetComponentLocation();
+	const FVector CameraForward   = FollowCamera->GetForwardVector();
+	const FVector CharacterLocation = GetOwner()->GetActorLocation();
+	const float DistanceToCharacter = (CharacterLocation - CameraLocation).Size();
 	
-	FVector2D ViewportSize;
-	GEngine->GameViewport->GetViewportSize(ViewportSize);
+	const FVector Start = CameraLocation + CameraForward * (DistanceToCharacter + 20.f); 
+	const FVector End = Start + CameraForward * TraceLength;
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.bReturnPhysicalMaterial = true;
+	QueryParams.AddIgnoredActor(GetOwner());
 
-	FVector2D CrosshairLocation(ViewportSize.X / 2.f, ViewportSize.Y / 2.f);
-	FVector CrosshairWorldPosition;
-	FVector CrosshairWorldDirection;
+	FCollisionResponseParams ResponseParams;
+	ResponseParams.CollisionResponse.SetAllChannels(ECR_Ignore);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldStatic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldDynamic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_PhysicsBody, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ES1TraceChannel::ECC_SkeletalMesh, ECR_Block);
 
-	bool bScreenToWorld = UGameplayStatics::DeprojectScreenToWorld(
-		UGameplayStatics::GetPlayerController(this, 0),
-		CrosshairLocation,
-		CrosshairWorldPosition,
-		CrosshairWorldDirection
+	const bool bHit = GetWorld()->SweepSingleByChannel(
+		OutHit,
+		Start,
+		End,
+		FQuat::Identity,
+		ES1TraceChannel::ECC_Weapon,
+		FCollisionShape::MakeSphere(TraceRadius),
+		QueryParams,
+		ResponseParams
 	);
 
-	if (bScreenToWorld)
-	{
-		FVector Start = CrosshairWorldPosition;
-		FVector End = Start + CrosshairWorldDirection * TraceLength;
+	if (!bHit)
+		OutHit.ImpactPoint = End;
 
-		GWorld->LineTraceSingleByChannel(
-			TraceHitResult,
-			Start,
-			End,
-			ECC_Visibility
-			);
-		
-		DrawDebugSphere(
-			GetWorld(),
-			TraceHitResult.ImpactPoint,
-			12.f,
-			12.f,
-			FColor::Red
-			);
+	const FVector ToTarget = OutHit.ImpactPoint - CameraLocation;
+	if (FVector::DotProduct(ToTarget, CameraForward) < 0.f)
+	{
+		OutHit.ImpactPoint = CameraLocation + CameraForward * TraceLength;
 	}
 }
 

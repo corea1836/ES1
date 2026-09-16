@@ -4,7 +4,6 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
-#include "Animations/ES1AnimInstance.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/ES1AttributeComponent.h"
@@ -49,9 +48,12 @@ AES1Character::AES1Character()
 	InteractableComponent->SetupAttachment(GetCapsuleComponent());
 	
 	DefaultFieldOfView = 65.f;
+
+	CameraThreshold = 200.f;
 	
 	bWeaponFirstReplicated = false;
 	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	GetMesh()->SetCollisionObjectType(ES1TraceChannel::ECC_SkeletalMesh);
 }
 
 
@@ -59,27 +61,7 @@ void AES1Character::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	ETraceTypeQuery TraceChannel = UEngineTypes::ConvertToTraceType(ECC_Visibility);
-	FVector StartPosition = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-	FVector EndPosition = GetActorLocation() - FVector(0.f, 0.f, 1000.f);
-	TArray<AActor*> ActorsToIgnore;
-	FHitResult HitResult;
-	//
-	// UKismetSystemLibrary::SphereTraceSingle(
-	// 	GetWorld(),
-	// 	StartPosition,
-	// 	EndPosition,
-	// 	5.0f,
-	// 	TraceChannel,
-	// 	false,
-	// 	ActorsToIgnore,
-	// 	EDrawDebugTrace::ForDuration,
-	// 	HitResult,
-	// 	true
-	// 	);
-	//
-	// Cast<UES1AnimInstance>(GetPlayerMesh()->GetAnimInstance())->ReceiveGroundDistance(HitResult.Distance);
-
+	HideCameraIfCharacterClose();
 }
 
 void AES1Character::NotifyControllerChanged()
@@ -376,5 +358,27 @@ void AES1Character::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAd
 {
 	Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
 	RefreshMovementGate();
+}
+
+void AES1Character::HideCameraIfCharacterClose()
+{
+	if (!IsLocallyControlled()) return;
+
+	if ((FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraThreshold)
+	{
+		GetMesh()->SetVisibility(false);
+		if (IsValid(CombatComponent) && IsValid(CombatComponent->GetCurrentWeapon()))
+		{
+			CombatComponent->GetCurrentWeapon()->GetMesh()->bOwnerNoSee = true;
+		}
+	}
+	else
+	{
+		GetMesh()->SetVisibility(true);
+		if (IsValid(CombatComponent) && IsValid(CombatComponent->GetCurrentWeapon()))
+		{
+			CombatComponent->GetCurrentWeapon()->GetMesh()->bOwnerNoSee = false;
+		}
+	}
 }
 

@@ -56,7 +56,7 @@ public:
 	
 	void AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmount);
 
-	void TraceUnderCrosshairs(FHitResult& TraceHitResult);
+	void TraceUnderCrosshairs(FHitResult& OutHit);
 	
 	UPROPERTY(BlueprintAssignable)
 	FReticleChanged OnReticleChanged;
@@ -88,9 +88,11 @@ protected:
 	void BlendOut_CycleWeapon(UAnimMontage* Montage, bool bInterrupted);
 	
 	// Variables
-	UPROPERTY(EditDefaultsOnly, Category="ES1|Weapon")
-	float TraceLength;
-	
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
+	float BaseTraceLength;
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
+	float BaseTraceRadius;
 private:	
 	// Functions
 	UFUNCTION()

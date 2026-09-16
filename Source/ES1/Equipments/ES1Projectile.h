@@ -15,6 +15,7 @@ class ES1_API AES1Projectile : public AActor
 	GENERATED_BODY()
 
 public:
+	// Functions
 	AES1Projectile();
 	virtual void Tick(float DeltaTime) override;
 	virtual void Destroyed() override;

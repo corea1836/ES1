@@ -11,9 +11,12 @@ UES1InteractableComponent::UES1InteractableComponent()
 
 	InitSphereRadius(SphereRadius);
 	SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-	SetCollisionResponseToAllChannels(ECR_Ignore);
-	SetCollisionResponseToChannel(ES1TraceChannel::ECC_Interact, ECR_Overlap);
-	SetGenerateOverlapEvents(false);
+	SetCollisionObjectType(ECC_WorldDynamic);          
+	SetCollisionResponseToAllChannels(ECR_Ignore);         
+	SetCollisionResponseToChannel(ES1TraceChannel::ECC_Interact, ECR_Overlap); 
+    
+	SetGenerateOverlapEvents(true);   // ← 반드시 true! (네 코드는 false라 감지 안 됨)
+
 
 	bEnabled = true;
 	bShowWidgetWhenNearby = true;

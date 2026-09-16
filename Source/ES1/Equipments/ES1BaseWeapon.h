@@ -56,6 +56,12 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|FireTime")
 	float FireTime;
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
+	float TraceLength;
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
+	float TraceRadius;
 	
 protected:
 	virtual void BeginPlay() override;

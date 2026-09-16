@@ -19,6 +19,8 @@ AES1BaseWeapon::AES1BaseWeapon()
 
 	AimFieldOfView = 200.f;
 	FireTime = 0.1f;
+
+	TraceLength = 20'000;
 }
 
 void AES1BaseWeapon::BeginPlay()

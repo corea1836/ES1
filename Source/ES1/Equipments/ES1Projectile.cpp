@@ -1,10 +1,13 @@
 #include "ES1Projectile.h"
+
+#include "Characters/ES1Character.h"
 #include "Components/BoxComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Particles/ParticleSystem.h"
 #include "Sound/SoundCue.h"
+#include "Types/ES1CoreTypes.h"
 
 AES1Projectile::AES1Projectile()
 {
@@ -13,11 +16,17 @@ AES1Projectile::AES1Projectile()
 
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
 	SetRootComponent(CollisionBox);
+
+	CollisionBox->IgnoreActorWhenMoving(GetOwner(), true);
+	CollisionBox->SetAllUseCCD(true);
+	
 	CollisionBox->SetCollisionObjectType(ECC_WorldDynamic);
 	CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	
 	CollisionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	CollisionBox->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
+	CollisionBox->SetCollisionResponseToChannel(ES1TraceChannel::ECC_SkeletalMesh, ECR_Block);
 
 	ProjectileMovementComponent= CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("ProjectileMovementComponent"));
 	ProjectileMovementComponent->bRotationFollowsVelocity = true;
@@ -26,7 +35,7 @@ AES1Projectile::AES1Projectile()
 void AES1Projectile::BeginPlay()
 {
 	Super::BeginPlay();
-
+	UE_LOG(LogTemp, Warning, TEXT("Spawn at %s"), *GetActorLocation().ToString());
 	if (IsValid(Tracer))
 	{
 		TracerComponent = UGameplayStatics::SpawnEmitterAttached(
@@ -53,16 +62,26 @@ void AES1Projectile::Tick(float DeltaTime)
 void AES1Projectile::Destroyed()
 {
 	Super::Destroyed();
-	
-	if (!IsValid(ImpactParticles) || !IsValid(ImpactSound)) return;
-	
-	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
-	UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	if (IsValid(ImpactParticles))
+		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
+	if (IsValid(ImpactSound))
+		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+
 }
 
 void AES1Projectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	FVector NormalImpulse, const FHitResult& Hit)
+                           FVector NormalImpulse, const FHitResult& Hit)
 {
-	Destroy();
+	if (AES1Character* HitCharacter = Cast<AES1Character>(OtherActor); IsValid(HitCharacter))
+	{
+		const int32 MontageSelection = FMath::RandRange(0, HitCharacter->HitReacts.Num() - 1);
+		HitCharacter->Multicast_HitReact(MontageSelection);
+	}
+	
+	SetActorLocation(Hit.ImpactPoint);   
+	SetActorEnableCollision(false);
+	if (IsValid(ProjectileMovementComponent))
+		ProjectileMovementComponent->StopMovementImmediately();
+	SetLifeSpan(0.02f);  
 }
 
