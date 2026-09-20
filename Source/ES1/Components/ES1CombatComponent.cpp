@@ -15,15 +15,7 @@ UES1CombatComponent::UES1CombatComponent()
 	Local_WeaponIndex = 0;
 
 	BaseTraceLength = 20'000;
-	BaseTraceRadius = 5.f;
-}
-
-void UES1CombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	
-	FHitResult Hit;
-	TraceUnderCrosshairs(Hit);
+	BaseTraceRadius = 0.5f;
 }
 
 void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -33,8 +25,21 @@ void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	DOREPLIFETIME(UES1CombatComponent, WeaponInventory);
 	DOREPLIFETIME(UES1CombatComponent, CurrentWeapon);
 	DOREPLIFETIME_CONDITION(UES1CombatComponent, bAiming, COND_SkipOwner);
-	DOREPLIFETIME_CONDITION(UES1CombatComponent, bFireTriggerPressed, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(UES1CombatComponent, CurrentReserveAmmo, COND_OwnerOnly);
+}
+
+void UES1CombatComponent::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+void UES1CombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	FHitResult Hit;
+    TraceUnderCrosshairs(Hit);
+    HitTarget = Hit.ImpactPoint;
 }
 
 void UES1CombatComponent::Initiate_SwitchWeapon()
@@ -50,10 +55,8 @@ void UES1CombatComponent::Initiate_SwitchWeapon()
 void UES1CombatComponent::Initiate_FireWeapon_Pressed()
 {
 	if (!IsValid(CurrentWeapon)) return;
-
-	FHitResult HitResult;
-	TraceUnderCrosshairs(HitResult);
-	Server_FireWeaponPressed(HitResult.ImpactPoint);
+	
+	Local_FireWeaponPressed();
 }
 
 void UES1CombatComponent::Initiate_FireWeapon_Released()
@@ -240,10 +243,10 @@ void UES1CombatComponent::AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmou
 
 void UES1CombatComponent::TraceUnderCrosshairs(FHitResult& OutHit)
 {
-	AES1Character* Character = Cast<AES1Character>(GetOwner());
-	if (!IsValid(Character)) return;
+	AES1Character* OwningPawn = Cast<AES1Character>(GetOwner());
+	if (!IsValid(OwningPawn) || !OwningPawn->IsLocallyControlled()) return;
 
-	UCameraComponent* FollowCamera = Character->GetFollowCamera();
+	UCameraComponent* FollowCamera = OwningPawn->GetFollowCamera();
 	if (!IsValid(FollowCamera)) return;
 
 	float TraceLength = IsValid(CurrentWeapon) ? CurrentWeapon->TraceLength : BaseTraceLength;
@@ -264,7 +267,6 @@ void UES1CombatComponent::TraceUnderCrosshairs(FHitResult& OutHit)
 	FCollisionResponseParams ResponseParams;
 	ResponseParams.CollisionResponse.SetAllChannels(ECR_Ignore);
 	ResponseParams.CollisionResponse.SetResponse(ECC_WorldStatic, ECR_Block);
-	ResponseParams.CollisionResponse.SetResponse(ECC_WorldDynamic, ECR_Block);
 	ResponseParams.CollisionResponse.SetResponse(ECC_PhysicsBody, ECR_Block);
 	ResponseParams.CollisionResponse.SetResponse(ES1TraceChannel::ECC_SkeletalMesh, ECR_Block);
 
@@ -287,6 +289,13 @@ void UES1CombatComponent::TraceUnderCrosshairs(FHitResult& OutHit)
 	{
 		OutHit.ImpactPoint = CameraLocation + CameraForward * TraceLength;
 	}
+
+	// trace 경로 (Start → End)
+	DrawDebugLine(GetWorld(), Start, End, FColor::Silver, false, 0.f, 0, 1.f);
+	// 최종 조준점 (HitTarget)
+	DrawDebugSphere(GetWorld(), OutHit.ImpactPoint,  20.f, 12, FColor::Red, false, 0.f);
+	// trace 시작점
+	DrawDebugSphere(GetWorld(), Start, 8.f, 8, FColor::Yellow, false, 0.f);
 }
 
 TSubclassOf<UAnimInstance> UES1CombatComponent::GetCurrentWeaponAnimLayer() const
@@ -297,11 +306,6 @@ TSubclassOf<UAnimInstance> UES1CombatComponent::GetCurrentWeaponAnimLayer() cons
 		return AnimLayer->AnimInstance;
 	
 	return nullptr;
-}
-
-void UES1CombatComponent::BeginPlay()
-{
-	Super::BeginPlay();	
 }
 
 void UES1CombatComponent::BlendOut_CycleWeapon(UAnimMontage* Montage, bool bInterrupted)
@@ -325,10 +329,8 @@ void UES1CombatComponent::BlendOut_CycleWeapon(UAnimMontage* Montage, bool bInte
 
 void UES1CombatComponent::Server_FireWeaponPressed_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
-	APawn* OwningPawn = Cast<APawn>(GetOwner());
-	if (!IsValid(OwningPawn) || !IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
-
-	bFireTriggerPressed = true;
+	if (!IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
+	
 	HitTarget = TraceHitTarget;
 
 	Multicast_FireWeaponPressed(HitTarget);
@@ -343,7 +345,6 @@ void UES1CombatComponent::Multicast_FireWeaponPressed_Implementation(const FVect
 	// }
 	// else
 	// {
-	bFireTriggerPressed = true;
 	HitTarget = TraceHitTarget;
 	RemoteFireFXWaitTIme = 0.f;
 
@@ -420,8 +421,7 @@ void UES1CombatComponent::FireTimerFinished()
 		CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
 	}
 	
-	if (bFireTriggerPressed
-		&& CurrentWeapon->FireType == ES1FireType::Auto)
+	if (bFireTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto)
 		// && CurrentWeapon->Ammo > 0)
 	{
 		Local_FireWeaponPressed();
@@ -438,18 +438,14 @@ void UES1CombatComponent::Local_Aim(bool bIsPressed)
 
 void UES1CombatComponent::Local_FireWeaponPressed()
 {
-	if (!IsValid(CurrentWeapon)) return;
-	if (!IsValid(WeaponData)) return;
-	// bFireTriggerPressed = true;
+	if (!IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
+	bFireTriggerPressed = true;
 	
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Firing;
-		
-	FHitResult Hit;
-	TraceUnderCrosshairs(Hit);
 
-	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &ThisClass::FireTimerFinished, CurrentWeapon->FireTime);
+	Server_FireWeaponPressed(HitTarget);
 	
-	Server_FireWeaponPressed(Hit.ImpactPoint);
+	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &ThisClass::FireTimerFinished, CurrentWeapon->FireTime);
 }
 
 void UES1CombatComponent::Local_FireWeaponReleased()
@@ -457,7 +453,6 @@ void UES1CombatComponent::Local_FireWeaponReleased()
 	if (!IsValid(CurrentWeapon)) return;
 	bFireTriggerPressed = false;
 	Server_FireWeaponReleased();
-	
 }
 
 int32 UES1CombatComponent::AdvancedWeaponIndex()

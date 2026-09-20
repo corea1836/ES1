@@ -69,8 +69,13 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	VelocityLocomotionAngle = UKismetAnimationLibrary::CalculateDirection(Velocity2D, WorldRotation);
 	VelocityLocomotionAngleWithOffset = FRotator::NormalizeAxis(VelocityLocomotionAngle - RootYawOffset);
+
+	const float RawYaw = WorldRotation.Yaw;
+	const float YawDelta = FRotator::NormalizeAxis(RawYaw - SmoothedActorYaw);
+	SmoothedActorYaw = FRotator::NormalizeAxis(
+	SmoothedActorYaw + YawDelta * FMath::Clamp(DeltaSeconds * 15.f, 0.f, 1.f));
 	LastFrameActorYaw = ActorYaw;
-	ActorYaw = WorldRotation.Yaw;
+	ActorYaw = SmoothedActorYaw;
 	AccelerationLocomotionAngle = UKismetAnimationLibrary::CalculateDirection(Acceleration2D, WorldRotation);
 
 	AccelerationLocomotionAngleWithOffset = FRotator::NormalizeAxis(AccelerationLocomotionAngle - RootYawOffset);
@@ -80,7 +85,7 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	
 	LeanAngle = FMath::Clamp(YawPerSecond / 2, -90.f, 90.f) * CalculateDirectionFactor();
 	
-	CalculateLocomotionDirection();
+	CalculateLocomotionDirection();	
 	CalculateAccelerationLocomotionDirection();
 	
 	UpdateRootYawOffset(DeltaSeconds);

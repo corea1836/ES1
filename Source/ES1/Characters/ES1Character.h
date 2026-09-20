@@ -69,6 +69,7 @@ public:
 	TArray<TObjectPtr<UAnimMontage>> HitReacts;
 		
 protected:
+	// Functions
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnAim(bool bIsAiming);
 	

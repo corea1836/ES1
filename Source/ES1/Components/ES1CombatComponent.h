@@ -5,6 +5,7 @@
 #include "Components/ActorComponent.h"
 #include "ES1CombatComponent.generated.h"
 
+class AES1Character;
 class UES1WeaponData;
 class AES1BaseWeapon;
 
@@ -159,8 +160,7 @@ private:
 	
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
 	bool bAiming;
-
-	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
+	
 	bool bFireTriggerPressed;
 	FTimerHandle FireTimer;
 	

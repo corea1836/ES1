@@ -54,6 +54,9 @@ AES1Character::AES1Character()
 	bWeaponFirstReplicated = false;
 	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	GetMesh()->SetCollisionObjectType(ES1TraceChannel::ECC_SkeletalMesh);
+
+	NetUpdateFrequency = 66.f;
+	MinNetUpdateFrequency = 33.f;
 }
 
 

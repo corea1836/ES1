@@ -188,7 +188,9 @@ protected:
 	
 	UPROPERTY(BlueprintReadWrite, Category = "Rotation Data")
 	float AimPitch;
-	
+
+	UPROPERTY(BlueprintReadWrite, Category = "Rotation Data")
+	float SmoothedActorYaw;
 public:
 	UFUNCTION(BlueprintCallable, meta=(BlueprintThreadSafe))
 	void ProcessTurnCurveYaw();
