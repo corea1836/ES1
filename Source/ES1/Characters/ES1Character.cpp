@@ -59,6 +59,45 @@ AES1Character::AES1Character()
 	MinNetUpdateFrequency = 33.f;
 }
 
+void AES1Character::BeginPlay()
+{
+	Super::BeginPlay();		 
+	
+	HealthComponent->OnDeathStarted.AddDynamic(this, &ThisClass::OnDeathStarted);
+	
+	GetCharacterMovement()->bCanWalkOffLedgesWhenCrouching = true;
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	
+	FollowCamera->SetFieldOfView(DefaultFieldOfView);
+	AttributeComponent->SwitchGate(EES1MovementGate::Jogging);
+	
+	if (PlayerOverlayWidgetClass)
+	{
+		PlayerOverlayWidget = CreateWidget<UES1Overlay>(GetWorld(), PlayerOverlayWidgetClass);
+		if (PlayerOverlayWidget)
+		{
+			PlayerOverlayWidget->AddToViewport();
+		}
+	}
+
+	if (HasAuthority())
+	{
+		OnTakeAnyDamage.AddDynamic(this, &ThisClass::ReceiveDamage);
+	}
+	
+	bPawnAlive = true;
+
+}
+
+void AES1Character::BeginDestroy()
+{
+	Super::BeginDestroy();
+	
+	if  (IsValid(CombatComponent))
+	{
+		CombatComponent->DestroyInventory();
+	}
+}
 
 void AES1Character::Tick(float DeltaTime)
 {
@@ -154,43 +193,17 @@ bool AES1Character::DoDamage_Implementation(float DamageAmount, AActor* DamageIn
 	HealthComponent->ChangeHealthByAmount(-DamageAmount, DamageInstigator);
 	
 	const int32 MontageSelection = FMath::RandRange(0, HitReacts.Num() - 1);
-	Multicast_HitReact(MontageSelection);
 		
 	return false;
 }
 
-void AES1Character::BeginPlay()
+void AES1Character::PlayHitReactMontage()
 {
-	Super::BeginPlay();		 
-	
-	HealthComponent->OnDeathStarted.AddDynamic(this, &ThisClass::OnDeathStarted);
-	
-	GetCharacterMovement()->bCanWalkOffLedgesWhenCrouching = true;
-	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
-	
-	FollowCamera->SetFieldOfView(DefaultFieldOfView);
-	AttributeComponent->SwitchGate(EES1MovementGate::Jogging);
-	
-	if (PlayerOverlayWidgetClass)
-	{
-		PlayerOverlayWidget = CreateWidget<UES1Overlay>(GetWorld(), PlayerOverlayWidgetClass);
-		if (PlayerOverlayWidget)
-		{
-			PlayerOverlayWidget->AddToViewport();
-		}
-	}
-	
-	bPawnAlive = true;
+	const int32 MontageIndex = FMath::RandRange(0, HitReacts.Num() - 1);
 
-}
-
-void AES1Character::BeginDestroy()
-{
-	Super::BeginDestroy();
-	
-	if  (IsValid(CombatComponent))
+	if (HitReacts.IsValidIndex(MontageIndex))
 	{
-		CombatComponent->DestroyInventory();
+		GetMesh()->GetAnimInstance()->Montage_Play(HitReacts[MontageIndex]);
 	}
 }
 
@@ -232,15 +245,13 @@ void AES1Character::OnRep_PlayerState()
 	// }
 }
 
-void AES1Character::Multicast_HitReact_Implementation(int32 MontageIndex)
+void AES1Character::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+	AController* InstigatorController, AActor* DamageCauser)
 {
-	if (GetNetMode() != NM_DedicatedServer)
-	{
-		if (HitReacts.IsValidIndex(MontageIndex))
-		{
-			GetMesh()->GetAnimInstance()->Montage_Play(HitReacts[MontageIndex]);
-		}
-	}
+	if (!IsValid(HealthComponent)) return;
+
+	HealthComponent->ChangeHealthByAmount(-Damage, InstigatorController);
+	PlayHitReactMontage();
 }
 
 void AES1Character::OnDeathStarted()

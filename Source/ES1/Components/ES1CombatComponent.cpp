@@ -380,7 +380,7 @@ void UES1CombatComponent::PlayFireWeapon(const FVector_NetQuantize& TraceHitTarg
 		RemoteFireFXWaitTIme += GetWorld()->GetDeltaSeconds();
 		FVector_NetQuantize Captured = TraceHitTarget;
 		GetWorld()->GetTimerManager().SetTimerForNextTick(
-			[this, Captured]() { PlayFireWeapon(Captured); });   // 값 캡처
+			[this, Captured]() { PlayFireWeapon(Captured); });
 	}
 	
 }

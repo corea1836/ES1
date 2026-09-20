@@ -26,6 +26,9 @@ protected:
 	UFUNCTION()
 	virtual void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
+	UPROPERTY(EditAnywhere)
+	float Damage;
+	
 private:
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<UBoxComponent> CollisionBox;
@@ -43,5 +46,4 @@ private:
 
 	UPROPERTY(EditAnywhere)
 	TObjectPtr<USoundCue> ImpactSound;
-
 };

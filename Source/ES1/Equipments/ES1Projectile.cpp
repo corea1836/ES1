@@ -72,12 +72,6 @@ void AES1Projectile::Destroyed()
 void AES1Projectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
                            FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (AES1Character* HitCharacter = Cast<AES1Character>(OtherActor); IsValid(HitCharacter))
-	{
-		const int32 MontageSelection = FMath::RandRange(0, HitCharacter->HitReacts.Num() - 1);
-		HitCharacter->Multicast_HitReact(MontageSelection);
-	}
-	
 	SetActorLocation(Hit.ImpactPoint);   
 	SetActorEnableCollision(false);
 	if (IsValid(ProjectileMovementComponent))

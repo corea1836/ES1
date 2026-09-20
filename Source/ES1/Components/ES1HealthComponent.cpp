@@ -1,5 +1,6 @@
 ﻿#include "ES1HealthComponent.h"
 
+#include "Characters/ES1Character.h"
 #include "Net/UnrealNetwork.h"
 
 UES1HealthComponent::UES1HealthComponent()
@@ -17,8 +18,8 @@ void UES1HealthComponent::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
 	DOREPLIFETIME(UES1HealthComponent, DeathState);
-	DOREPLIFETIME_CONDITION(UES1HealthComponent, Health, COND_OwnerOnly);
-	DOREPLIFETIME_CONDITION(UES1HealthComponent, MaxHealth, COND_OwnerOnly);
+	DOREPLIFETIME(UES1HealthComponent, Health);
+	DOREPLIFETIME(UES1HealthComponent, MaxHealth);
 }
 
 float UES1HealthComponent::GetHealthNormalize() const
@@ -32,10 +33,10 @@ bool UES1HealthComponent::ChangeHealthByAmount(float Amount, AActor* Instigator)
 	Health = FMath::Clamp(Health + Amount, 0.f, MaxHealth);
 	OnHealthChanged.Broadcast(this, OldValue, Health, Instigator);
 	
-	if (Health <= 0.f)
-	{
-		StartDeath();
-	}
+	// if (Health <= 0.f)
+	// {
+	// 	StartDeath();
+	// }
 	
 	return false;
 }
@@ -63,6 +64,8 @@ void UES1HealthComponent::OnRep_DeathState(EDeathState OldDeathState)
 void UES1HealthComponent::OnRep_Health(float OldValue)
 {
 	OnHealthChanged.Broadcast(this, OldValue, Health, nullptr);
+	AES1Character* OwningCharacter = Cast<AES1Character>(GetOwner());
+	if (IsValid)
 }
 
 void UES1HealthComponent::OnRep_MaxHealth(float OldValue)

@@ -56,8 +56,7 @@ public:
 	virtual void AddAmmo_Implementation(const FGameplayTag& WeaponType, int32 AmmoAmount) override;
 	virtual bool DoDamage_Implementation(float DamageAmount, AActor* DamageInstigator) override;
 
-	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_HitReact(int32 MontageIndex);
+	void PlayHitReactMontage();
 
 	FORCEINLINE UCameraComponent* GetFollowCamera() { return FollowCamera; }
 	
@@ -72,6 +71,9 @@ protected:
 	// Functions
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnAim(bool bIsAiming);
+
+	UFUNCTION()
+	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
 	
 	UFUNCTION()
 	void OnDeathStarted();
