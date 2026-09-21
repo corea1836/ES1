@@ -6,42 +6,52 @@
 void AES1ProjectileWeapon::PlayFire(const FVector& HitTarget)
 {
 	Super::PlayFire(HitTarget);
-	
-	if (!HasAuthority()) return;
+}
 
-	APawn* Instigator = GetInstigator();
+TObjectPtr<AES1Projectile> AES1ProjectileWeapon::SpawnProjectile(const FVector& HitTarget, bool bCosmetic)
+{
+	APawn* WeaponInstigator = GetInstigator();
+	if (!IsValid(ProjectileClass) || !IsValid(WeaponInstigator) || !IsValid(Mesh)) return nullptr;
 
-	USkeletalMeshComponent* OwnerMesh = IES1PlayerInterface::Execute_GetPlayerMesh(Instigator);
+	const USkeletalMeshSocket* MuzzleFlashSocket = Mesh->GetSocketByName(FName("MuzzleFlash"));
+	if (!MuzzleFlashSocket) return nullptr;
 
-	if (IsValid(OwnerMesh))
-	{
+	if (USkeletalMeshComponent* OwnerMesh = IES1PlayerInterface::Execute_GetPlayerMesh(WeaponInstigator))
 		OwnerMesh->RefreshBoneTransforms();
-	}
-	
-	if (const USkeletalMeshSocket* MuzzleFlashSocket = Mesh->GetSocketByName(FName("MuzzleFlash")))
-	{
-		FTransform SocketTransform = MuzzleFlashSocket->GetSocketTransform(Mesh);
-		FVector ToTarget = HitTarget - SocketTransform.GetLocation();
-		FRotator TargetRotation = ToTarget.Rotation();
 
-		if (IsValid(ProjectileClass) && IsValid(Instigator))
-		{
-			FActorSpawnParameters SpawnParams;
-			SpawnParams.Owner = GetOwner();
-			SpawnParams.Instigator = Instigator;
-			UWorld* World = GetWorld();
-			if (IsValid(World))
-			{
-				World->SpawnActor<AES1Projectile>(
-				
-					ProjectileClass,
-					SocketTransform.GetLocation(),
-					TargetRotation,
-					SpawnParams
-				);
-			}
-		}
+	const FTransform SocketTransform = MuzzleFlashSocket->GetSocketTransform(Mesh);
+	const FVector MuzzleLocation = SocketTransform.GetLocation();
+	const FRotator SpawnRotation = (HitTarget - MuzzleLocation).Rotation();
+	const FTransform SpawnTM(SpawnRotation, MuzzleLocation);
+
+	UWorld* World = GetWorld();
+	if (!IsValid(World)) return nullptr;
+
+	AES1Projectile* Projectile = World->SpawnActorDeferred<AES1Projectile>(
+		ProjectileClass,
+		SpawnTM,
+		GetOwner(),
+		WeaponInstigator,
+		ESpawnActorCollisionHandlingMethod::AlwaysSpawn
+	);
+
+	if (IsValid(Projectile))
+	{
+		Projectile->bCosmetic = bCosmetic;
+		Projectile->FinishSpawning(SpawnTM);
 	}
-	
-	
+
+	return Projectile;
+}
+
+void AES1ProjectileWeapon::Local_Fire(const FVector& HitTarget)
+{
+	Super::Local_Fire(HitTarget);
+	SpawnProjectile(HitTarget, true);
+}
+
+void AES1ProjectileWeapon::Auth_Fire(const FVector& HitTarget)
+{
+	Super::Auth_Fire(HitTarget);
+	SpawnProjectile(HitTarget, false);
 }

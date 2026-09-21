@@ -65,7 +65,10 @@ void UES1HealthComponent::OnRep_Health(float OldValue)
 {
 	OnHealthChanged.Broadcast(this, OldValue, Health, nullptr);
 	AES1Character* OwningCharacter = Cast<AES1Character>(GetOwner());
-	if (IsValid)
+	if (IsValid(OwningCharacter))
+	{
+		OwningCharacter->PlayHitReactMontage();
+	}
 }
 
 void UES1HealthComponent::OnRep_MaxHealth(float OldValue)

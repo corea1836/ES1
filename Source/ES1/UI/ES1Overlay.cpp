@@ -32,16 +32,11 @@ void UES1Overlay::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
 	{
 		NewHealthComponent->OnHealthChanged.AddDynamic(this, &ThisClass::OnHpChanged);
 	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[UI] Subscribing to HealthComp %p"), NewHealthComponent);
 }
 
 void UES1Overlay::OnHpChanged(UES1HealthComponent* HealthComponent,float OldValue, float NewValue,AActor* Instigator)
 {
-	UE_LOG(LogTemp, Warning, TEXT("OnHpChanged called on widget: %p, HealthBar: %p"),
-	this, HealthBar.Get());
 	if (!HealthBar) return;
 	const float CurrentHp = HealthComponent->GetHealthNormalize();
-	UE_LOG(LogTemp, Warning, TEXT("SetPercent: %f"), CurrentHp);
 	HealthBar->SetPercent(CurrentHp);
 }

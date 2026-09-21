@@ -39,6 +39,9 @@ public:
 
 	virtual void PlayFire(const FVector& HitTarget);
 
+	virtual void Local_Fire(const FVector& HitTarget);
+	virtual void Auth_Fire(const FVector& HitTarget);
+
 	FORCEINLINE USkeletalMeshComponent* GetMesh() const { return Mesh; }
 
 	// Variables

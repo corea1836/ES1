@@ -12,17 +12,15 @@
 AES1Projectile::AES1Projectile()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	bReplicates = true;
+	bReplicates = false;
+	bCosmetic = false;
 
 	CollisionBox = CreateDefaultSubobject<UBoxComponent>(TEXT("CollisionBox"));
 	SetRootComponent(CollisionBox);
-
-	CollisionBox->IgnoreActorWhenMoving(GetOwner(), true);
-	CollisionBox->SetAllUseCCD(true);
 	
+	CollisionBox->SetAllUseCCD(true);
 	CollisionBox->SetCollisionObjectType(ECC_WorldDynamic);
 	CollisionBox->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	
 	CollisionBox->SetCollisionResponseToAllChannels(ECR_Ignore);
 	CollisionBox->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	CollisionBox->SetCollisionResponseToChannel(ECC_WorldStatic, ECR_Block);
@@ -35,23 +33,29 @@ AES1Projectile::AES1Projectile()
 void AES1Projectile::BeginPlay()
 {
 	Super::BeginPlay();
-	UE_LOG(LogTemp, Warning, TEXT("Spawn at %s"), *GetActorLocation().ToString());
-	if (IsValid(Tracer))
+
+	if (IsValid(GetOwner()))
+		CollisionBox->IgnoreActorWhenMoving(GetOwner(), true);
+
+	if (bCosmetic)
 	{
-		TracerComponent = UGameplayStatics::SpawnEmitterAttached(
-			Tracer,
-			CollisionBox,
-			FName(),
-			GetActorLocation(),
-			GetActorRotation(),
-			EAttachLocation::KeepWorldPosition);
+		if (IsValid(Tracer))
+		{
+			TracerComponent = UGameplayStatics::SpawnEmitterAttached(
+				Tracer,
+				CollisionBox,
+				FName(),
+				GetActorLocation(),
+				GetActorRotation(),
+				EAttachLocation::KeepWorldPosition);
+		}
+	}
+	else
+	{
+		SetActorHiddenInGame(true);
 	}
 	
-	if (HasAuthority())
-	{
-		CollisionBox->OnComponentHit.AddDynamic(this, &AES1Projectile::OnHit);
-	}
-	
+	CollisionBox->OnComponentHit.AddDynamic(this, &AES1Projectile::OnHit);
 }
 
 void AES1Projectile::Tick(float DeltaTime)
@@ -62,11 +66,14 @@ void AES1Projectile::Tick(float DeltaTime)
 void AES1Projectile::Destroyed()
 {
 	Super::Destroyed();
-	if (IsValid(ImpactParticles))
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
-	if (IsValid(ImpactSound))
-		UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
 
+	if (bCosmetic)
+	{
+		if (IsValid(ImpactParticles))
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, GetActorTransform());
+		if (IsValid(ImpactSound))
+			UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, GetActorLocation());
+	}
 }
 
 void AES1Projectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,

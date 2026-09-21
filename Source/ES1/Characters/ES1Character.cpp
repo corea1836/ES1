@@ -251,7 +251,6 @@ void AES1Character::ReceiveDamage(AActor* DamagedActor, float Damage, const UDam
 	if (!IsValid(HealthComponent)) return;
 
 	HealthComponent->ChangeHealthByAmount(-Damage, InstigatorController);
-	PlayHitReactMontage();
 }
 
 void AES1Character::OnDeathStarted()

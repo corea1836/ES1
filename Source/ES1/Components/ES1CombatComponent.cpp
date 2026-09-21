@@ -327,11 +327,27 @@ void UES1CombatComponent::BlendOut_CycleWeapon(UAnimMontage* Montage, bool bInte
 	// }
 }
 
+void UES1CombatComponent::Local_FireWeaponPressed()
+{
+	if (!IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
+	bFireTriggerPressed = true;
+	
+	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Firing;
+
+	PlayFireWeapon(HitTarget);
+	
+	Server_FireWeaponPressed(HitTarget);
+	
+	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &ThisClass::FireTimerFinished, CurrentWeapon->FireTime);
+}
+
 void UES1CombatComponent::Server_FireWeaponPressed_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
 	if (!IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
 	
 	HitTarget = TraceHitTarget;
+
+	CurrentWeapon->Auth_Fire(HitTarget);
 
 	Multicast_FireWeaponPressed(HitTarget);
 }
@@ -345,9 +361,16 @@ void UES1CombatComponent::Multicast_FireWeaponPressed_Implementation(const FVect
 	// }
 	// else
 	// {
+
+	APawn* OwningPawn = Cast<APawn>(GetOwner());
+	if (!IsValid(OwningPawn)) return;
+
+	if (OwningPawn->IsLocallyControlled()) return;
+	if (GetNetMode() == NM_DedicatedServer) return;
+
+	
 	HitTarget = TraceHitTarget;
 	RemoteFireFXWaitTIme = 0.f;
-
 	PlayFireWeapon(TraceHitTarget);
 }
 
@@ -373,6 +396,7 @@ void UES1CombatComponent::PlayFireWeapon(const FVector_NetQuantize& TraceHitTarg
 		{
 			AnimInstance->Montage_Play(PlayerFireMontage);
 			CurrentWeapon->PlayFire(TraceHitTarget);
+			CurrentWeapon->Local_Fire(TraceHitTarget);
 		}
 	}
 	else
@@ -434,18 +458,6 @@ void UES1CombatComponent::Local_Aim(bool bIsPressed)
 	OnAimingStatusChanged.Broadcast(bAiming);
 	if (AES1Character* Owner = Cast<AES1Character>(GetOwner()))
 		Owner->RefreshMovementGate();
-}
-
-void UES1CombatComponent::Local_FireWeaponPressed()
-{
-	if (!IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
-	bFireTriggerPressed = true;
-	
-	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Firing;
-
-	Server_FireWeaponPressed(HitTarget);
-	
-	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &ThisClass::FireTimerFinished, CurrentWeapon->FireTime);
 }
 
 void UES1CombatComponent::Local_FireWeaponReleased()

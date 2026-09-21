@@ -76,3 +76,11 @@ void AES1BaseWeapon::PlayFire(const FVector& HitTarget)
 	}
 }
 
+void AES1BaseWeapon::Local_Fire(const FVector& HitTarget)
+{
+}
+
+void AES1BaseWeapon::Auth_Fire(const FVector& HitTarget)
+{
+}
+

@@ -19,6 +19,10 @@ public:
 	AES1Projectile();
 	virtual void Tick(float DeltaTime) override;
 	virtual void Destroyed() override;
+
+	// Variables
+	UPROPERTY()
+	bool bCosmetic;
 	
 protected:
 	virtual void BeginPlay() override;

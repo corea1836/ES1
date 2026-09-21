@@ -9,13 +9,17 @@ void AES1ProjectileBullet::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActo
                                  FVector NormalImpulse, const FHitResult& Hit)
 {
 
-	AES1Character* OwnerCharacter = Cast<AES1Character>(GetOwner());
-	if (!IsValid(OwnerCharacter)) return;
-
-	AController* OwnerController = OwnerCharacter->GetController();
-	if (!IsValid(OwnerController)) return;
-
-	UGameplayStatics::ApplyDamage(OtherActor, Damage, OwnerController, this, UDamageType::StaticClass());
+	if (!bCosmetic)
+	{
+		if (AES1Character* OwnerCharacter = Cast<AES1Character>(GetOwner()))
+		{
+			if (AController* OwnerController = OwnerCharacter->GetController())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Server Hit"))
+				UGameplayStatics::ApplyDamage(OtherActor, Damage, OwnerController, this, UDamageType::StaticClass());
+			}
+		}
+	}
 	
 	Super::OnHit(HitComp, OtherActor, OtherComp, NormalImpulse, Hit);
 }

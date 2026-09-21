@@ -15,6 +15,11 @@ public:
 	// Functions
 	virtual void PlayFire(const FVector& HitTarget);
 
+	TObjectPtr<AES1Projectile> SpawnProjectile(const FVector& HitTarget, bool bCosmetic);
+
+	virtual void Local_Fire(const FVector& HitTarget) override;
+	virtual void Auth_Fire(const FVector& HitTarget) override;
+
 	// Variables
 protected:
 
