@@ -112,7 +112,7 @@ private:
 	void Server_FireWeaponReleased();
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_FireWeaponPressed(const FVector_NetQuantize& TraceHitTarget);
+	void Multicast_FireWeaponPressed(const FVector_NetQuantize& TraceHitTarget, int32 AuthAmmo);
 
 	void PlayFireWeapon(const FVector_NetQuantize& TraceHitTarget);
 	

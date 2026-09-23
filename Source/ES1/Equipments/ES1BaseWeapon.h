@@ -41,6 +41,7 @@ public:
 
 	virtual void Local_Fire(const FVector& HitTarget);
 	virtual void Auth_Fire(const FVector& HitTarget);
+	void Rep_Fire(int32 AuthAmmo);
 
 	FORCEINLINE USkeletalMeshComponent* GetMesh() const { return Mesh; }
 
@@ -65,10 +66,21 @@ public:
 
 	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
 	float TraceRadius;
+
+	UPROPERTY(EditAnywhere, Category="ES1|Ammo")
+	int32 MagCapacity;
+
+	UPROPERTY(EditAnywhere, Category="ES1|Ammo")
+	int32 Ammo;
+
+	UPROPERTY(EditAnywhere, Category="ES1|Ammo")
+	int32 StartingCarriedAmmo;
 	
 protected:
+	// Functions
 	virtual void BeginPlay() override;
 
+	// Variables
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Mesh", meta=(AllowPrivateAccess=true))
 	TObjectPtr<USkeletalMeshComponent> Mesh;
 
@@ -79,5 +91,6 @@ protected:
 	TObjectPtr<UAnimationAsset> FireAnimation;
 	
 private:
-
+	// Variables
+	int32 Sequence;
 };

@@ -55,8 +55,9 @@ void UES1CombatComponent::Initiate_SwitchWeapon()
 void UES1CombatComponent::Initiate_FireWeapon_Pressed()
 {
 	if (!IsValid(CurrentWeapon)) return;
-	
-	Local_FireWeaponPressed();
+
+	if (CurrentWeapon->Ammo > 0)
+		Local_FireWeaponPressed();
 }
 
 void UES1CombatComponent::Initiate_FireWeapon_Released()
@@ -349,29 +350,27 @@ void UES1CombatComponent::Server_FireWeaponPressed_Implementation(const FVector_
 
 	CurrentWeapon->Auth_Fire(HitTarget);
 
-	Multicast_FireWeaponPressed(HitTarget);
+	Multicast_FireWeaponPressed(HitTarget, CurrentWeapon->Ammo);
 }
 
-void UES1CombatComponent::Multicast_FireWeaponPressed_Implementation(const FVector_NetQuantize& TraceHitTarget)
+void UES1CombatComponent::Multicast_FireWeaponPressed_Implementation(const FVector_NetQuantize& TraceHitTarget, int32 AuthAmmo)
 {
-	//
-	// if (OwningPawn->IsLocallyControlled())
-	// {
-	// 	CurrentWeapon->Rep_Fire(AuthAmmo);
-	// }
-	// else
-	// {
-
+	if (!IsValid(CurrentWeapon)) return;
+	if (GetNetMode() == NM_DedicatedServer) return;
+	
 	APawn* OwningPawn = Cast<APawn>(GetOwner());
 	if (!IsValid(OwningPawn)) return;
 
-	if (OwningPawn->IsLocallyControlled()) return;
-	if (GetNetMode() == NM_DedicatedServer) return;
-
-	
-	HitTarget = TraceHitTarget;
-	RemoteFireFXWaitTIme = 0.f;
-	PlayFireWeapon(TraceHitTarget);
+	if (OwningPawn->IsLocallyControlled())
+	{
+		CurrentWeapon->Rep_Fire(AuthAmmo);
+	}
+	else
+	{
+		HitTarget = TraceHitTarget;
+		RemoteFireFXWaitTIme = 0.f;
+		PlayFireWeapon(TraceHitTarget);
+	}
 }
 
 void UES1CombatComponent::PlayFireWeapon(const FVector_NetQuantize& TraceHitTarget)
@@ -395,7 +394,6 @@ void UES1CombatComponent::PlayFireWeapon(const FVector_NetQuantize& TraceHitTarg
 		if (IsValid(PlayerFireMontage))
 		{
 			AnimInstance->Montage_Play(PlayerFireMontage);
-			CurrentWeapon->PlayFire(TraceHitTarget);
 			CurrentWeapon->Local_Fire(TraceHitTarget);
 		}
 	}
@@ -433,20 +431,7 @@ void UES1CombatComponent::FireTimerFinished()
 	APawn* OwningPawn = Cast<APawn>(GetOwner());
 	if (!IsValid(CurrentWeapon) || !IsValid(OwningPawn)) return;
 	
-	// if (CurrentWeapon->Ammo == 0 && CurrentReserveAmmo > 0 && OwningPawn->IsLocallyControlled())
-	// {
-	// 	Local_ReloadWeapon();
-	// 	Server_ReloadWeapon();
-	// 	return;
-	// }
-	
-	if (CurrentWeapon->WeaponStatus == ES1WeaponStatus::Firing)
-	{
-		CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
-	}
-	
-	if (bFireTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto)
-		// && CurrentWeapon->Ammo > 0)
+	if (bFireTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto && CurrentWeapon->Ammo > 0)
 	{
 		Local_FireWeaponPressed();
 	}

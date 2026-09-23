@@ -21,6 +21,10 @@ AES1BaseWeapon::AES1BaseWeapon()
 	FireTime = 0.1f;
 
 	TraceLength = 20'000;
+
+	Ammo = 5;
+	StartingCarriedAmmo = 10;
+	Sequence;
 }
 
 void AES1BaseWeapon::BeginPlay()
@@ -78,9 +82,26 @@ void AES1BaseWeapon::PlayFire(const FVector& HitTarget)
 
 void AES1BaseWeapon::Local_Fire(const FVector& HitTarget)
 {
+	PlayFire(HitTarget);
+	if (GetInstigator()->IsLocallyControlled())
+	{
+		Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+		++Sequence;
+	}
 }
 
 void AES1BaseWeapon::Auth_Fire(const FVector& HitTarget)
 {
+	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+}
+
+void AES1BaseWeapon::Rep_Fire(int32 AuthAmmo)
+{
+	if (GetInstigator()->IsLocallyControlled())
+	{
+		Ammo = AuthAmmo;
+		--Sequence;
+		Ammo -= Sequence;
+	}
 }
 
