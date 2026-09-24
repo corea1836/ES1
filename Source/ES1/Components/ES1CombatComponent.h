@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
+#include "Types/ES1ReticleTypes.h"
 #include "ES1CombatComponent.generated.h"
 
 class AES1Character;
@@ -10,10 +11,8 @@ class UES1WeaponData;
 class AES1BaseWeapon;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FReticleChanged, UMaterialInstanceDynamic*, ReticleDynMatInst, const FES1ReticleParams&, ReticleParams);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAmmoCounterChanged, UMaterialInstanceDynamic*, AmmoCounterDynMatInst, int32, RoundCurrent, int32, RoundsMax);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FRoundFired, int32, RoundsCurrent, int32, RoundsMax, int32, RoundsInReserve);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnFired);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAimingStatusChanged, bool, bIsAiming);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FCurrentReserveAmmoChanged, int32, RoundsInReserve, int32, RoundsInWeapon, UMaterialInterface*, WeaponIconMaterial);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class ES1_API UES1CombatComponent : public UActorComponent
@@ -58,21 +57,15 @@ public:
 	void AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmount);
 
 	void TraceUnderCrosshairs(FHitResult& OutHit);
-	
+
 	UPROPERTY(BlueprintAssignable)
 	FReticleChanged OnReticleChanged;
-	
+
 	UPROPERTY(BlueprintAssignable)
-	FAmmoCounterChanged OnAmmoCounterChanged;
-	
-	UPROPERTY(BlueprintAssignable)
-	FRoundFired OnRoundFired;
-	
+	FOnFired OnFired;
+
 	UPROPERTY(BlueprintAssignable)
 	FAimingStatusChanged OnAimingStatusChanged;
-	
-	UPROPERTY(BlueprintAssignable)
-	FCurrentReserveAmmoChanged OnCurrentReserveAmmoChanged;
 	
 	// Variables
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Weapon")

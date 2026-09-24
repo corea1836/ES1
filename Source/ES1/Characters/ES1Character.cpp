@@ -52,6 +52,7 @@ AES1Character::AES1Character()
 	CameraThreshold = 200.f;
 	
 	bWeaponFirstReplicated = false;
+	
 	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	GetMesh()->SetCollisionObjectType(ES1TraceChannel::ECC_SkeletalMesh);
 
@@ -158,6 +159,7 @@ void AES1Character::WeaponReplicated_Implementation()
 	}
 }
 
+
 AES1BaseWeapon* AES1Character::GetCurrentWeapon_Implementation()
 {
 	return CombatComponent->GetCurrentWeapon();
@@ -239,10 +241,10 @@ void AES1Character::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	
-	// if (IsValid(CombatComponent))																																																											`b
-	// {
-	// 	CombatComponent->InitializeWeaponWidgets();
-	// }
+	if (IsValid(CombatComponent))	
+	{
+		CombatComponent->InitializeWeaponWidgets();
+	}
 }
 
 void AES1Character::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,

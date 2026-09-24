@@ -34,7 +34,7 @@ void UES1Overlay::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
 	}
 }
 
-void UES1Overlay::OnHpChanged(UES1HealthComponent* HealthComponent,float OldValue, float NewValue,AActor* Instigator)
+void UES1Overlay::OnHpChanged(UES1HealthComponent* HealthComponent, float OldValue, float NewValue, AActor* Instigator)
 {
 	if (!HealthBar) return;
 	const float CurrentHp = HealthComponent->GetHealthNormalize();

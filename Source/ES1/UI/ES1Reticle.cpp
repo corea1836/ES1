@@ -1,13 +1,8 @@
-#include "UI/ES1Reticle.h"
+#include "ES1Reticle.h"
 
 #include "Characters/ES1Character.h"
 #include "Components/Image.h"
-
-namespace Ammo
-{
-	const FName Rounds_Current = FName("Rounds_Current");
-	const FName Rounds_Max = FName("Rounds_Max");
-}
+#include "Materials/MaterialInstanceDynamic.h"
 
 namespace Reticle
 {
@@ -18,66 +13,62 @@ namespace Reticle
 void UES1Reticle::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
+
+	Image_Reticle->SetRenderOpacity(0.f);
+	_BaseCornerScaleFactor_RoundedFired = 0.f;
+	_BaseShapeCutFactor_RoundedFired = 0.f;
+	_BaseCornerScaleFactor_Aiming = 0.f;
+	_BaseShapeCutFactor_Aiming = 0.;
+	bAiming = false;
+
+	GetOwningPlayer()->OnPossessedPawnChanged.AddDynamic(this, &ThisClass::OnPossessedPawnChanged);
+
+	AES1Character* Character = Cast<AES1Character>(GetOwningPlayer()->GetPawn());
+	if (!IsValid(Character)) return;
+
+	OnPossessedPawnChanged(nullptr, Character);
+
+	if (Character->HasWeaponFirstReplicated())
+	{
+		AES1BaseWeapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
+		if (IsValid(Weapon))
+		{
+			OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
+		}
+	}
+	else
+	{
+		Character->OnWeaponFirstReplicated.AddDynamic(this, &ThisClass::OnWeaponFirstReplicated);
+	}
+
+	if (Character->HasAuthority())
+	{
+		AES1BaseWeapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
+		if (IsValid(Weapon))
+		{
+			OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
+		}	
+	}
 	
-	// Image_Reticle->SetRenderOpacity(0.f);
-	// Image_AmmoCounter->SetRenderOpacity(0.f);
-	// _BaseCornerScaleFactor_RoundFired = 0.f;
-	// _BaseShapeCutFactor_RoundFired = 0.f;
-	// _BaseCornerScaleFactor_Aiming = 0.f;
-	// _BaseShapeCutFactor_Aiming = 0.f;
-	// bAiming = false;
-	//
-	// GetOwningPlayer()->OnPossessedPawnChanged.AddDynamic(this, &ThisClass::OnPossessedPawnChanged);
-	//
-	// AES1Character* Character = Cast<AES1Character>(GetOwningPlayer()->GetPawn());
-	// if (!IsValid(Character)) return;
-	//
-	// OnPossessedPawnChanged(nullptr, Character);
-	//
-	// if (Character->HasWeaponFirstReplicated())
-	// {
-	// 	AES1Weapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
-	// 	
-	// 	if (IsValid(Weapon))
-	// 	{
-	// 		OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
-	// 		OnAmmoCounterChanged(Weapon->GetAmmoCounterDynamicMaterialInstance(), Weapon->Ammo, Weapon->MagCapacity);
-	// 	}
-	// }
-	// else
-	// {
-	// 	Character->OnWeaponFirstReplicated.AddDynamic(this, &ThisClass::OnWeaponFirstReplicated);
-	// }
-	//
-	// if (Character->HasAuthority())
-	// {
-	// 	AES1Weapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
-	// 	
-	// 	if (!IsValid(Weapon)) return;
-	// 	OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
-	// 	OnAmmoCounterChanged(Weapon->GetAmmoCounterDynamicMaterialInstance(), Weapon->Ammo, Weapon->MagCapacity);
-	// }
 }
 
 void UES1Reticle::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
-	
-	_BaseCornerScaleFactor_RoundFired = FMath::FInterpTo(_BaseCornerScaleFactor_RoundFired, 0.f, InDeltaTime, CurrentReticleParams.RoundFiredInterpSpeed);
-	_BaseShapeCutFactor_RoundFired = FMath::FInterpTo(_BaseShapeCutFactor_RoundFired, 0.f, InDeltaTime, CurrentReticleParams.RoundFiredInterpSpeed);
-	
+
+	_BaseCornerScaleFactor_RoundedFired = FMath::FInterpTo(_BaseCornerScaleFactor_RoundedFired, 0.f, InDeltaTime, CurrentReticleParams.RoundFiredInterpSpeed);
+	_BaseShapeCutFactor_RoundedFired = FMath::FInterpTo(_BaseShapeCutFactor_RoundedFired, 0.f, InDeltaTime, CurrentReticleParams.RoundFiredInterpSpeed);
+
 	_BaseCornerScaleFactor_Aiming = FMath::FInterpTo(_BaseCornerScaleFactor_Aiming, bAiming ? CurrentReticleParams.ScaleFactor_Aiming : CurrentReticleParams.ScaleFactor_NotAiming, InDeltaTime, CurrentReticleParams.AimingInterpSpeed);
 	_BaseShapeCutFactor_Aiming = FMath::FInterpTo(_BaseShapeCutFactor_Aiming, bAiming ? CurrentReticleParams.ShapeCutFactor_Aiming : CurrentReticleParams.ShapeCutFactor_NotAiming, InDeltaTime, CurrentReticleParams.AimingInterpSpeed);
-	
-	BaseCornerScaleFactor = _BaseCornerScaleFactor_RoundFired + _BaseCornerScaleFactor_Aiming;
-	BaseShapeCutFactor = _BaseShapeCutFactor_RoundFired - _BaseShapeCutFactor_Aiming;
-	
+	BaseCornerScaleFactor = _BaseCornerScaleFactor_RoundedFired + _BaseCornerScaleFactor_Aiming;
+	BaseShapeCurFactor = _BaseShapeCutFactor_RoundedFired - _BaseShapeCutFactor_Aiming;
+
 	if (CurrentReticle_DynMatInst.IsValid())
 	{
 		CurrentReticle_DynMatInst->SetScalarParameterValue(Reticle::RoundedCornerScale, BaseCornerScaleFactor);
-		CurrentReticle_DynMatInst->SetScalarParameterValue(Reticle::ShapeCutThickness, BaseShapeCutFactor);
+		CurrentReticle_DynMatInst->SetScalarParameterValue(Reticle::ShapeCutThickness, BaseShapeCurFactor);
 	}
-	
 }
 
 void UES1Reticle::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
@@ -86,70 +77,51 @@ void UES1Reticle::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
 	if (IsValid(OldCombatComponent))
 	{
 		OldCombatComponent->OnReticleChanged.RemoveDynamic(this, &ThisClass::OnReticleChanged);
-		OldCombatComponent->OnAmmoCounterChanged.RemoveDynamic(this, &ThisClass::OnAmmoCounterChanged);
-		OldCombatComponent->OnRoundFired.RemoveDynamic(this, &ThisClass::OnRoundFired);
-		OldCombatComponent->OnAimingStatusChanged.RemoveDynamic(this, &ThisClass::OnAimingStatusChanged);
+		OldCombatComponent->OnFired.RemoveDynamic(this, &ThisClass::OnFired);
+		OldCombatComponent->OnAimingStatusChanged.RemoveDynamic(this, &ThisClass::OnAimingStatusChaged);
 	}
-	
+
 	UES1CombatComponent* NewCombatComponent = UES1CombatComponent::FindCombatComponent(NewPawn);
 	if (IsValid(NewCombatComponent))
 	{
 		Image_Reticle->SetRenderOpacity(1.f);
-		Image_AmmoCounter->SetRenderOpacity(1.f);
 		NewCombatComponent->OnReticleChanged.AddDynamic(this, &ThisClass::OnReticleChanged);
-		NewCombatComponent->OnAmmoCounterChanged.AddDynamic(this, &ThisClass::OnAmmoCounterChanged);
-		NewCombatComponent->OnRoundFired.AddDynamic(this, &ThisClass::OnRoundFired);
-		NewCombatComponent->OnAimingStatusChanged.AddDynamic(this, &ThisClass::OnAimingStatusChanged);
+		NewCombatComponent->OnFired.AddDynamic(this, &ThisClass::OnFired);
+		NewCombatComponent->OnAimingStatusChanged.AddDynamic(this, &ThisClass::OnAimingStatusChaged);
 	}
 }
 
-void UES1Reticle::OnWeaponFirstReplicated(AES1Weapon* Weapon)
+void UES1Reticle::OnWeaponFirstReplicated(AES1BaseWeapon* Weapon)
 {
 	OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
-	OnAmmoCounterChanged(Weapon->GetAmmoCounterDynamicMaterialInstance(), Weapon->Ammo, Weapon->MagCapacity);
 }
 
 void UES1Reticle::OnReticleChanged(UMaterialInstanceDynamic* ReticleDynMatInst, const FES1ReticleParams& ReticleParams)
 {
 	CurrentReticleParams = ReticleParams;
 	CurrentReticle_DynMatInst = ReticleDynMatInst;
-	
+
 	FSlateBrush Brush;
 	Brush.SetResourceObject(ReticleDynMatInst);
+	Brush.ImageSize = FVector2D(75.f, 75.f);
 	if (IsValid(Image_Reticle))
 	{
 		Image_Reticle->SetBrush(Brush);
 	}
-}
-
-void UES1Reticle::OnAmmoCounterChanged(UMaterialInstanceDynamic* AmmoCounterDynMatInst, int32 RoundsCurrent,
-	int32 RoundsMax)
-{
-	CurrentAmmoCounter_DynMatInst = AmmoCounterDynMatInst;
-	CurrentAmmoCounter_DynMatInst->SetScalarParameterValue(Ammo::Rounds_Current, RoundsCurrent);
-	CurrentAmmoCounter_DynMatInst->SetScalarParameterValue(Ammo::Rounds_Max, RoundsMax);
 	
-	FSlateBrush Brush;
-	Brush.SetResourceObject(AmmoCounterDynMatInst);
-	if (IsValid(Image_Reticle))
+	if (CurrentReticle_DynMatInst.IsValid())
 	{
-		Image_AmmoCounter->SetBrush(Brush);
+		CurrentReticle_DynMatInst->SetVectorParameterValue(FName("Color"), FLinearColor::White);	
 	}
 }
 
-void UES1Reticle::OnRoundFired(int32 RoundsCurrent, int32 RoundsMax, int32 RoundsInReserve)
+void UES1Reticle::OnFired()
 {
-	_BaseCornerScaleFactor_RoundFired += CurrentReticleParams.ScaleFactor_RoundFired;
-	_BaseShapeCutFactor_RoundFired += CurrentReticleParams.ShapeCutFactor_RoundFired;
-	
-	if (CurrentAmmoCounter_DynMatInst.IsValid())
-	{
-		CurrentAmmoCounter_DynMatInst->SetScalarParameterValue(Ammo::Rounds_Current, RoundsCurrent);
-		CurrentAmmoCounter_DynMatInst->SetScalarParameterValue(Ammo::Rounds_Max, RoundsMax);
-	}
+	_BaseCornerScaleFactor_RoundedFired += CurrentReticleParams.ScaleFactor_RoundFired;
+	_BaseShapeCutFactor_RoundedFired += CurrentReticleParams.ShapeCutFactor_RoundFired;
 }
 
-void UES1Reticle::OnAimingStatusChanged(bool bIsAiming)
+void UES1Reticle::OnAimingStatusChaged(bool bIsAiming)
 {
-	this->bAiming = bIsAiming;
+	bAiming = bIsAiming;
 }

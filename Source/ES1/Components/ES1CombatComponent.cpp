@@ -205,13 +205,10 @@ void UES1CombatComponent::DestroyInventory()
 
 void UES1CombatComponent::InitializeWeaponWidgets() const
 {
-	// if (IsValid(CurrentWeapon))
-	// {
-	// 	OnReticleChanged.Broadcast(CurrentWeapon->GetReticleDynamicMaterialInstance(), CurrentWeapon->ReticleParams);
-	// 	OnAmmoCounterChanged.Broadcast(CurrentWeapon->GetAmmoCounterDynamicMaterialInstance(),
-	// 									CurrentWeapon->Ammo,
-	// 									CurrentWeapon->MagCapacity);
-	// }
+	if (IsValid(CurrentWeapon))
+	{
+		OnReticleChanged.Broadcast(CurrentWeapon->GetReticleDynamicMaterialInstance(), CurrentWeapon->ReticleParams);
+	}
 }
 
 void UES1CombatComponent::AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmount)
@@ -291,12 +288,12 @@ void UES1CombatComponent::TraceUnderCrosshairs(FHitResult& OutHit)
 		OutHit.ImpactPoint = CameraLocation + CameraForward * TraceLength;
 	}
 
-	// trace 경로 (Start → End)
-	DrawDebugLine(GetWorld(), Start, End, FColor::Silver, false, 0.f, 0, 1.f);
-	// 최종 조준점 (HitTarget)
-	DrawDebugSphere(GetWorld(), OutHit.ImpactPoint,  20.f, 12, FColor::Red, false, 0.f);
-	// trace 시작점
-	DrawDebugSphere(GetWorld(), Start, 8.f, 8, FColor::Yellow, false, 0.f);
+	// // trace 경로 (Start → End)
+	// DrawDebugLine(GetWorld(), Start, End, FColor::Silver, false, 0.f, 0, 1.f);
+	// // 최종 조준점 (HitTarget)
+	// DrawDebugSphere(GetWorld(), OutHit.ImpactPoint,  20.f, 12, FColor::Red, false, 0.f);
+	// // trace 시작점
+	// DrawDebugSphere(GetWorld(), Start, 8.f, 8, FColor::Yellow, false, 0.f);
 }
 
 TSubclassOf<UAnimInstance> UES1CombatComponent::GetCurrentWeaponAnimLayer() const
@@ -335,6 +332,8 @@ void UES1CombatComponent::Local_FireWeaponPressed()
 	
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Firing;
 
+	OnFired.Broadcast();
+	
 	PlayFireWeapon(HitTarget);
 	
 	Server_FireWeaponPressed(HitTarget);
@@ -440,9 +439,9 @@ void UES1CombatComponent::FireTimerFinished()
 void UES1CombatComponent::Local_Aim(bool bIsPressed)
 {
 	bAiming = bIsPressed;
-	OnAimingStatusChanged.Broadcast(bAiming);
 	if (AES1Character* Owner = Cast<AES1Character>(GetOwner()))
 		Owner->RefreshMovementGate();
+	OnAimingStatusChanged.Broadcast(bAiming);
 }
 
 void UES1CombatComponent::Local_FireWeaponReleased()

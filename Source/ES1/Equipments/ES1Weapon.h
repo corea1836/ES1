@@ -4,7 +4,6 @@
 #include "ES1BaseWeapon.h"
 #include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
-#include "UI/ES1Reticle.h"
 #include "ES1Weapon.generated.h"
 
 UCLASS()
@@ -56,9 +55,6 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Ammo")
 	int32 StartingCarriedAmmo;
-
-	UPROPERTY(EditDefaultsOnly, Category="ES1|UI|Reticle")
-	FES1ReticleParams ReticleParams;
 	
 	UPROPERTY(EditDefaultsOnly, Category="ES1|Icon")
 	TObjectPtr<UMaterialInterface> WeaponIcon;

@@ -160,9 +160,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UES1Overlay> PlayerOverlayWidget;
 
-	
-	
 	bool bWeaponFirstReplicated;
-
+	
 	bool bPawnAlive;
 };

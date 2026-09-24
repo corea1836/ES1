@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
+#include "Types/ES1ReticleTypes.h"
 #include "ES1BaseWeapon.generated.h"
 
 class AES1BulletShell;
@@ -43,6 +44,8 @@ public:
 	virtual void Auth_Fire(const FVector& HitTarget);
 	void Rep_Fire(int32 AuthAmmo);
 
+	UMaterialInstanceDynamic* GetReticleDynamicMaterialInstance();
+
 	FORCEINLINE USkeletalMeshComponent* GetMesh() const { return Mesh; }
 
 	// Variables
@@ -75,6 +78,15 @@ public:
 
 	UPROPERTY(EditAnywhere, Category="ES1|Ammo")
 	int32 StartingCarriedAmmo;
+
+	UPROPERTY(EditAnywhere, Category="ES1|UI")
+	TObjectPtr<UMaterialInterface> ReticleMaterial;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> DynMatInst_Reticle;
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Reticle")
+	FES1ReticleParams ReticleParams;
 	
 protected:
 	// Functions

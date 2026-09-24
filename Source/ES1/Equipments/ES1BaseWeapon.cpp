@@ -105,3 +105,12 @@ void AES1BaseWeapon::Rep_Fire(int32 AuthAmmo)
 	}
 }
 
+UMaterialInstanceDynamic* AES1BaseWeapon::GetReticleDynamicMaterialInstance()
+{
+	if (!IsValid(DynMatInst_Reticle))
+	{
+		DynMatInst_Reticle = UMaterialInstanceDynamic::Create(ReticleMaterial, this);
+	}
+	return DynMatInst_Reticle;
+}
+
