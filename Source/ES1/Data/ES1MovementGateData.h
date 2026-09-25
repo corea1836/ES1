@@ -1,8 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1Define.h"
 #include "Engine/DataAsset.h"
+#include "Types/ES1LocomotionTypes.h"
 #include "ES1MovementGateData.generated.h"
 
 USTRUCT(BlueprintType)

@@ -4,21 +4,18 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
-#include "ES1Define.h"
-#include "ES1GameplayTags.h"
-#include "Animations/ES1AnimInstance.h"
 #include "Blueprint/UserWidget.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/ES1AttributeComponent.h"
 #include "Components/ES1CombatComponent.h"
 #include "Components/ES1HealthComponent.h"
+#include "Components/ES1InteractableComponent.h"
+#include "Components/ES1InteractorComponent.h"
 #include "Data/ES1WeaponData.h"
-#include "Equipments/ES1Weapon.h"
+#include "Equipments/ES1LyraWeapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Kismet/KismetSystemLibrary.h"
-#include "Tags/ES1WeaponTags.h"
-#include "Equipments/ES1Weapon.h"
 #include "Players/ES1PlayerController.h"
+#include "Types/ES1CoreTypes.h"
 #include "UI/ES1Overlay.h"
 
 AES1Character::AES1Character()
@@ -45,38 +42,69 @@ AES1Character::AES1Character()
 	
 	HealthComponent = CreateDefaultSubobject<UES1HealthComponent>(TEXT("HealthComponent"));
 	HealthComponent->SetIsReplicated(true);
+
+	InteractorComponent = CreateDefaultSubobject<UES1InteractorComponent>(TEXT("InteractorComponent"));
+	InteractableComponent = CreateDefaultSubobject<UES1InteractableComponent>(TEXT("InteractableComponent"));
+	InteractableComponent->SetupAttachment(GetCapsuleComponent());
 	
 	DefaultFieldOfView = 65.f;
+
+	CameraThreshold = 200.f;
 	
 	bWeaponFirstReplicated = false;
+	
+	GetMesh()->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	GetMesh()->SetCollisionObjectType(ES1TraceChannel::ECC_SkeletalMesh);
+
+	NetUpdateFrequency = 66.f;
+	MinNetUpdateFrequency = 33.f;
 }
 
+void AES1Character::BeginPlay()
+{
+	Super::BeginPlay();		 
+	
+	HealthComponent->OnDeathStarted.AddDynamic(this, &ThisClass::OnDeathStarted);
+	
+	GetCharacterMovement()->bCanWalkOffLedgesWhenCrouching = true;
+	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
+	
+	FollowCamera->SetFieldOfView(DefaultFieldOfView);
+	AttributeComponent->SwitchGate(EES1MovementGate::Jogging);
+	
+	if (PlayerOverlayWidgetClass)
+	{
+		PlayerOverlayWidget = CreateWidget<UES1Overlay>(GetWorld(), PlayerOverlayWidgetClass);
+		if (PlayerOverlayWidget)
+		{
+			PlayerOverlayWidget->AddToViewport();
+		}
+	}
+
+	if (HasAuthority())
+	{
+		OnTakeAnyDamage.AddDynamic(this, &ThisClass::ReceiveDamage);
+	}
+	
+	bPawnAlive = true;
+
+}
+
+void AES1Character::BeginDestroy()
+{
+	Super::BeginDestroy();
+	
+	if  (IsValid(CombatComponent))
+	{
+		CombatComponent->DestroyInventory();
+	}
+}
 
 void AES1Character::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	
-	ETraceTypeQuery TraceChannel = UEngineTypes::ConvertToTraceType(ECC_Visibility);
-	FVector StartPosition = GetActorLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-	FVector EndPosition = GetActorLocation() - FVector(0.f, 0.f, 1000.f);
-	TArray<AActor*> ActorsToIgnore;
-	FHitResult HitResult;
-	//
-	// UKismetSystemLibrary::SphereTraceSingle(
-	// 	GetWorld(),
-	// 	StartPosition,
-	// 	EndPosition,
-	// 	5.0f,
-	// 	TraceChannel,
-	// 	false,
-	// 	ActorsToIgnore,
-	// 	EDrawDebugTrace::ForDuration,
-	// 	HitResult,
-	// 	true
-	// 	);
-	//
-	// Cast<UES1AnimInstance>(GetPlayerMesh()->GetAnimInstance())->ReceiveGroundDistance(HitResult.Distance);
-
+	HideCameraIfCharacterClose();
 }
 
 void AES1Character::NotifyControllerChanged()
@@ -131,6 +159,7 @@ void AES1Character::WeaponReplicated_Implementation()
 	}
 }
 
+
 AES1Weapon* AES1Character::GetCurrentWeapon_Implementation()
 {
 	return CombatComponent->GetCurrentWeapon();
@@ -165,46 +194,18 @@ bool AES1Character::DoDamage_Implementation(float DamageAmount, AActor* DamageIn
 	
 	HealthComponent->ChangeHealthByAmount(-DamageAmount, DamageInstigator);
 	
-	
-	
 	const int32 MontageSelection = FMath::RandRange(0, HitReacts.Num() - 1);
-	Multicast_HitReact(MontageSelection);
 		
 	return false;
 }
 
-void AES1Character::BeginPlay()
+void AES1Character::PlayHitReactMontage()
 {
-	Super::BeginPlay();		 
-	
-	HealthComponent->OnDeathStarted.AddDynamic(this, &ThisClass::OnDeathStarted);
-	
-	GetCharacterMovement()->bCanWalkOffLedgesWhenCrouching = true;
-	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
-	
-	FollowCamera->SetFieldOfView(DefaultFieldOfView);
-	AttributeComponent->SwitchGate(EES1MovementGate::Jogging);
-	
-	if (PlayerOverlayWidgetClass)
-	{
-		PlayerOverlayWidget = CreateWidget<UES1Overlay>(GetWorld(), PlayerOverlayWidgetClass);
-		if (PlayerOverlayWidget)
-		{
-			PlayerOverlayWidget->AddToViewport();
-		}
-	}
-	
-	bPawnAlive = true;
+	const int32 MontageIndex = FMath::RandRange(0, HitReacts.Num() - 1);
 
-}
-
-void AES1Character::BeginDestroy()
-{
-	Super::BeginDestroy();
-	
-	if  (IsValid(CombatComponent))
+	if (HitReacts.IsValidIndex(MontageIndex))
 	{
-		CombatComponent->DestroyInventory();
+		GetMesh()->GetAnimInstance()->Montage_Play(HitReacts[MontageIndex]);
 	}
 }
 
@@ -220,7 +221,6 @@ void AES1Character::RefreshMovementGate()
 {
 	EES1MovementGate Gate;
 	if (GetCharacterMovement()->IsCrouching()) Gate = EES1MovementGate::Crouching;
-	else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
 	else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
 	else Gate = EES1MovementGate::Jogging;
 	
@@ -241,21 +241,18 @@ void AES1Character::OnRep_PlayerState()
 {
 	Super::OnRep_PlayerState();
 	
-	// if (IsValid(CombatComponent))																																																											`b
-	// {
-	// 	CombatComponent->InitializeWeaponWidgets();
-	// }
+	if (IsValid(CombatComponent))	
+	{
+		CombatComponent->InitializeWeaponWidgets();
+	}
 }
 
-void AES1Character::Multicast_HitReact_Implementation(int32 MontageIndex)
+void AES1Character::ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+	AController* InstigatorController, AActor* DamageCauser)
 {
-	if (GetNetMode() != NM_DedicatedServer)
-	{
-		if (HitReacts.IsValidIndex(MontageIndex))
-		{
-			GetMesh()->GetAnimInstance()->Montage_Play(HitReacts[MontageIndex]);
-		}
-	}
+	if (!IsValid(HealthComponent)) return;
+
+	HealthComponent->ChangeHealthByAmount(-Damage, InstigatorController);
 }
 
 void AES1Character::OnDeathStarted()
@@ -376,5 +373,27 @@ void AES1Character::OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAd
 {
 	Super::OnEndCrouch(HalfHeightAdjust, ScaledHalfHeightAdjust);
 	RefreshMovementGate();
+}
+
+void AES1Character::HideCameraIfCharacterClose()
+{
+	if (!IsLocallyControlled()) return;
+
+	if ((FollowCamera->GetComponentLocation() - GetActorLocation()).Size() < CameraThreshold)
+	{
+		GetMesh()->SetVisibility(false);
+		if (IsValid(CombatComponent) && IsValid(CombatComponent->GetCurrentWeapon()))
+		{
+			CombatComponent->GetCurrentWeapon()->GetMesh()->bOwnerNoSee = true;
+		}
+	}
+	else
+	{
+		GetMesh()->SetVisibility(true);
+		if (IsValid(CombatComponent) && IsValid(CombatComponent->GetCurrentWeapon()))
+		{
+			CombatComponent->GetCurrentWeapon()->GetMesh()->bOwnerNoSee = false;
+		}
+	}
 }
 

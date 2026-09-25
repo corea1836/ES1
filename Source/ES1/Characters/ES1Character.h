@@ -1,12 +1,16 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Camera/CameraComponent.h"
 #include "Components/ES1CombatComponent.h"
-#include "Equipments/ES1Weapon.h"
+#include "Equipments/ES1LyraWeapon.h"
 #include "GameFramework/Character.h"
 #include "Interfaces/ES1PlayerInterface.h"
 #include "ES1Character.generated.h"
 
+class USpringArmComponent;
+class UES1InteractableComponent;
+class UES1InteractorComponent;
 class UInputAction;
 class UInputMappingContext;
 class UES1HealthComponent;
@@ -24,6 +28,7 @@ class ES1_API AES1Character : public ACharacter, public IES1PlayerInterface
 	GENERATED_BODY()
 	
 public:
+	// Functions
 	AES1Character();
 	
 	virtual void Tick(float DeltaTime) override;
@@ -50,6 +55,10 @@ public:
 	virtual void Notify_ReloadWeapon_Implementation() override;
 	virtual void AddAmmo_Implementation(const FGameplayTag& WeaponType, int32 AmmoAmount) override;
 	virtual bool DoDamage_Implementation(float DamageAmount, AActor* DamageInstigator) override;
+
+	void PlayHitReactMontage();
+
+	FORCEINLINE UCameraComponent* GetFollowCamera() { return FollowCamera; }
 	
 	// Variables
 	UPROPERTY(BlueprintAssignable)
@@ -59,11 +68,12 @@ public:
 	TArray<TObjectPtr<UAnimMontage>> HitReacts;
 		
 protected:
+	// Functions
 	UFUNCTION(BlueprintImplementableEvent)
 	void OnAim(bool bIsAiming);
-	
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_HitReact(int32 MontageIndex);
+
+	UFUNCTION()
+	void ReceiveDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, class AController* InstigatorController, AActor* DamageCauser);
 	
 	UFUNCTION()
 	void OnDeathStarted();
@@ -71,7 +81,8 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent)
 	void DeathEffects();
 	
-private:	
+private:
+	// Functions
 	void Input_Move(const FInputActionValue& InputActionValue);
 	void Input_Look(const FInputActionValue& InputActionValue);
 	void Input_Crouch();
@@ -85,13 +96,18 @@ private:
 	
 	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
 	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
+
+	void HideCameraIfCharacterClose();
 	
 	// Variables
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
-	TObjectPtr<class USpringArmComponent> SpringArm;
+	TObjectPtr<USpringArmComponent> SpringArm;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
-	TObjectPtr<class UCameraComponent> FollowCamera;
+	TObjectPtr<UCameraComponent> FollowCamera;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Camera", meta=(AllowPrivateAccess=true))
+	float CameraThreshold;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Camera|Aming", meta=(AllowPrivateAccess=true))
 	float DefaultFieldOfView;
@@ -104,6 +120,12 @@ private:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UES1HealthComponent> HealthComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UES1InteractorComponent> InteractorComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="ES1|Component", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UES1InteractableComponent> InteractableComponent;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UInputMappingContext> ES1IMC;
@@ -137,8 +159,8 @@ private:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UES1Overlay> PlayerOverlayWidget;
-	
-	bool bWeaponFirstReplicated;
 
+	bool bWeaponFirstReplicated;
+	
 	bool bPawnAlive;
 };

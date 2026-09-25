@@ -1,10 +1,10 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1Define.h"
 #include "Animation/AnimInstance.h"
 #include "Characters/ES1Character.h"
 #include "Tags/ES1WeaponTags.h"
+#include "Types/ES1LocomotionTypes.h"
 #include "ES1AnimInstance.generated.h"
 
 class UES1WeaponLocomotionData;
@@ -22,6 +22,8 @@ public:
 	
 	UFUNCTION()
 	void AnimNotify_ReloadWeapon();
+
+	void SetFireTriggerPressed(bool bPressed) { bFireTriggerPressed = bPressed; }
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
@@ -43,8 +45,14 @@ protected:
 	EES1MovementGate CurrentMovementGate;
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Anim|Weapon")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Combat|Weapon")
 	FGameplayTag CurrentWeaponType = ES1WeaponTags::Weapon_Type_Unarmed;
+
+	UPROPERTY(BlueprintReadWrite, Category="ES1|Combat")
+	bool bFireTriggerPressed;
+	
+	UPROPERTY(BlueprintReadWrite, Category="ES1|Combat")
+	TMap<FGameplayTag, TObjectPtr<UAnimSequence>> FireBlendAnimation;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	EES1MovementGate LastFrameMovementGate;
@@ -180,7 +188,9 @@ protected:
 	
 	UPROPERTY(BlueprintReadWrite, Category = "Rotation Data")
 	float AimPitch;
-	
+
+	UPROPERTY(BlueprintReadWrite, Category = "Rotation Data")
+	float SmoothedActorYaw;
 public:
 	UFUNCTION(BlueprintCallable, meta=(BlueprintThreadSafe))
 	void ProcessTurnCurveYaw();

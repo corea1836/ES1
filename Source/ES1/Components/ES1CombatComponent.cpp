@@ -3,20 +3,20 @@
 #include "Characters/ES1Character.h"
 #include "Data/ES1WeaponData.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
+#include "Types/ES1CoreTypes.h"
 
 UES1CombatComponent::UES1CombatComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	
-	TraceLength = 20'000;
 	bAiming = false;
-	bTriggerPressed = false;
+	bFireTriggerPressed = false;
 	Local_WeaponIndex = 0;
-}
 
-void UES1CombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
-{
-	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	BaseTraceLength = 20'000;
+	BaseTraceRadius = 0.5f;
+	Local_WeaponIndex = 0;
 }
 
 void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -26,8 +26,21 @@ void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimePrope
 	DOREPLIFETIME(UES1CombatComponent, WeaponInventory);
 	DOREPLIFETIME(UES1CombatComponent, CurrentWeapon);
 	DOREPLIFETIME_CONDITION(UES1CombatComponent, bAiming, COND_SkipOwner);
-	DOREPLIFETIME_CONDITION(UES1CombatComponent, bFiring, COND_SkipOwner);
 	DOREPLIFETIME_CONDITION(UES1CombatComponent, CurrentReserveAmmo, COND_OwnerOnly);
+}
+
+void UES1CombatComponent::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+void UES1CombatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	
+	FHitResult Hit;
+    TraceUnderCrosshairs(Hit);
+    HitTarget = Hit.ImpactPoint;
 }
 
 void UES1CombatComponent::Initiate_SwitchWeapon()
@@ -35,25 +48,24 @@ void UES1CombatComponent::Initiate_SwitchWeapon()
 	if (!IsValid(CurrentWeapon)) return;
 		
 	if (CurrentWeapon->WeaponStatus == ES1WeaponStatus::Cycling) return;
+
 	AdvancedWeaponIndex();
 	Local_CycleWeapon(Local_WeaponIndex);
-	
 }
 
 void UES1CombatComponent::Initiate_FireWeapon_Pressed()
 {
 	if (!IsValid(CurrentWeapon)) return;
-	bTriggerPressed = true;
-	
+
 	if (CurrentWeapon->WeaponStatus == ES1WeaponStatus::Idle && CurrentWeapon->Ammo > 0)
-	{
-		Local_FireWeapon();
-	}
+		Local_FireWeaponPressed();
 }
 
 void UES1CombatComponent::Initiate_FireWeapon_Released()
 {
-	bTriggerPressed = false;
+	if (!IsValid(CurrentWeapon)) return;
+
+	Local_FireWeaponReleased();
 }
 
 void UES1CombatComponent::Initiate_ReloadWeapon()
@@ -109,9 +121,9 @@ void UES1CombatComponent::Notify_ReloadWeapon()
 	}
 	
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
-	if (bTriggerPressed && CurrentWeapon->Ammo > 0)
+	if (bFireTriggerPressed && CurrentWeapon->Ammo > 0)
 	{
-		Local_FireWeapon();
+		Local_FireWeaponPressed();
 	}
 }
 
@@ -121,17 +133,13 @@ void UES1CombatComponent::OnRep_CurrentWeapon(AES1Weapon* LastWeapon)
 	 
 	IES1PlayerInterface::Execute_WeaponReplicated(GetOwner());
 	InitializeWeaponWidgets();
-	
-	AES1Character* Owner = Cast<AES1Character>(GetOwner());
-	if (!IsValid(Owner)) return;
-	Owner->LinkAnimLayer();
 }
 
 void UES1CombatComponent::OnRep_CurrentReserveAmmo()
 {
 	if (IsValid(CurrentWeapon))
 	{
-		OnCurrentReserveeAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
+		OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
 	}
 }
 
@@ -144,9 +152,9 @@ void UES1CombatComponent::Equip(AES1Weapon* Weapon)
 {
 	CurrentWeapon = Weapon;
 	CurrentWeapon->AttachToOwningPawn(Cast<APawn>(GetOwner()));
-	
+
 	CurrentReserveAmmo = ReserveAmmo.FindChecked(CurrentWeapon->WeaponType);
-	OnCurrentReserveeAmmoChanged.Broadcast(CurrentReserveAmmo, Weapon->Ammo, CurrentWeapon->WeaponIcon);
+	OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, Weapon->Ammo, CurrentWeapon->WeaponIcon);
 }
 
 void UES1CombatComponent::EquipWeapon(AES1Weapon* Weapon)
@@ -201,40 +209,92 @@ void UES1CombatComponent::InitializeWeaponWidgets() const
 	if (IsValid(CurrentWeapon))
 	{
 		OnReticleChanged.Broadcast(CurrentWeapon->GetReticleDynamicMaterialInstance(), CurrentWeapon->ReticleParams);
-		OnAmmoCounterChanged.Broadcast(CurrentWeapon->GetAmmoCounterDynamicMaterialInstance(),
-										CurrentWeapon->Ammo,
-										CurrentWeapon->MagCapacity);
 	}
 }
 
 void UES1CombatComponent::AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmount)
 {
-	if (GetOwner()->HasAuthority() && !IsValid(CurrentWeapon)) return;
-	
-	if (!ReserveAmmo.Contains(WeaponType))
-	{
-		ReserveAmmo.Add(WeaponType, AmmoAmount);
-	}
-	else
-	{
-		const int32 NewAmmo = ReserveAmmo.FindChecked(WeaponType) + AmmoAmount;
-		ReserveAmmo[WeaponType] = NewAmmo;
-		
-		if (CurrentWeapon->WeaponType.MatchesTagExact(WeaponType))
-		{
-			CurrentReserveAmmo = NewAmmo;
-			
-			if (CurrentWeapon->Ammo && NewAmmo > 0)
-			{
-				Server_ReloadWeapon();
-			}
-			
-			OnAmmoCounterChanged.Broadcast(CurrentWeapon->GetAmmoCounterDynamicMaterialInstance(), CurrentWeapon->Ammo, CurrentWeapon->MagCapacity);
-			OnCurrentReserveeAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon); 
-		}
-	}
-	
+	// if (GetOwner()->HasAuthority() && !IsValid(CurrentWeapon)) return;
+	//
+	// if (!ReserveAmmo.Contains(WeaponType))
+	// {
+	// 	ReserveAmmo.Add(WeaponType, AmmoAmount);
+	// }
+	// else
+	// {
+	// 	const int32 NewAmmo = ReserveAmmo.FindChecked(WeaponType) + AmmoAmount;
+	// 	ReserveAmmo[WeaponType] = NewAmmo;
+	// 	
+	// 	if (CurrentWeapon->WeaponType.MatchesTagExact(WeaponType))
+	// 	{
+	// 		CurrentReserveAmmo = NewAmmo;
+	// 		
+	// 		if (CurrentWeapon->Ammo && NewAmmo > 0)
+	// 		{
+	// 			Server_ReloadWeapon();
+	// 		}
+	// 		
+	// 		OnAmmoCounterChanged.Broadcast(CurrentWeapon->GetAmmoCounterDynamicMaterialInstance(), CurrentWeapon->Ammo, CurrentWeapon->MagCapacity);
+	// 		OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon); 
+	// 	}
+	// }
+}
 
+void UES1CombatComponent::TraceUnderCrosshairs(FHitResult& OutHit)
+{
+	AES1Character* OwningPawn = Cast<AES1Character>(GetOwner());
+	if (!IsValid(OwningPawn) || !OwningPawn->IsLocallyControlled()) return;
+
+	UCameraComponent* FollowCamera = OwningPawn->GetFollowCamera();
+	if (!IsValid(FollowCamera)) return;
+
+	float TraceLength = IsValid(CurrentWeapon) ? CurrentWeapon->TraceLength : BaseTraceLength;
+	float TraceRadius = IsValid(CurrentWeapon) ? CurrentWeapon->TraceRadius : BaseTraceRadius;
+
+	const FVector CameraLocation = FollowCamera->GetComponentLocation();
+	const FVector CameraForward   = FollowCamera->GetForwardVector();
+	const FVector CharacterLocation = GetOwner()->GetActorLocation();
+	const float DistanceToCharacter = (CharacterLocation - CameraLocation).Size();
+	
+	const FVector Start = CameraLocation + CameraForward * (DistanceToCharacter + 20.f); 
+	const FVector End = Start + CameraForward * TraceLength;
+	
+	FCollisionQueryParams QueryParams;
+	QueryParams.bReturnPhysicalMaterial = true;
+	QueryParams.AddIgnoredActor(GetOwner());
+
+	FCollisionResponseParams ResponseParams;
+	ResponseParams.CollisionResponse.SetAllChannels(ECR_Ignore);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldStatic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_PhysicsBody, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ES1TraceChannel::ECC_SkeletalMesh, ECR_Block);
+
+	const bool bHit = GetWorld()->SweepSingleByChannel(
+		OutHit,
+		Start,
+		End,
+		FQuat::Identity,
+		ES1TraceChannel::ECC_Weapon,
+		FCollisionShape::MakeSphere(TraceRadius),
+		QueryParams,
+		ResponseParams
+	);
+
+	if (!bHit)
+		OutHit.ImpactPoint = End;
+
+	const FVector ToTarget = OutHit.ImpactPoint - CameraLocation;
+	if (FVector::DotProduct(ToTarget, CameraForward) < 0.f)
+	{
+		OutHit.ImpactPoint = CameraLocation + CameraForward * TraceLength;
+	}
+
+	// // trace 경로 (Start → End)
+	// DrawDebugLine(GetWorld(), Start, End, FColor::Silver, false, 0.f, 0, 1.f);
+	// // 최종 조준점 (HitTarget)
+	// DrawDebugSphere(GetWorld(), OutHit.ImpactPoint,  20.f, 12, FColor::Red, false, 0.f);
+	// // trace 시작점
+	// DrawDebugSphere(GetWorld(), Start, 8.f, 8, FColor::Yellow, false, 0.f);
 }
 
 TSubclassOf<UAnimInstance> UES1CombatComponent::GetCurrentWeaponAnimLayer() const
@@ -247,82 +307,109 @@ TSubclassOf<UAnimInstance> UES1CombatComponent::GetCurrentWeaponAnimLayer() cons
 	return nullptr;
 }
 
-void UES1CombatComponent::BeginPlay()
-{
-	Super::BeginPlay();	
-}
-
 void UES1CombatComponent::BlendOut_CycleWeapon(UAnimMontage* Montage, bool bInterrupted)
 {
-	FString P = GetOwner()->HasAuthority() ? TEXT("[SVR]") : TEXT("[CLI]");
-
 	UAnimInstance* AnimInstance = IES1PlayerInterface::Execute_GetPlayerMesh(GetOwner())->GetAnimInstance();
 	if (IsValid(AnimInstance) && AnimInstance->OnMontageBlendingOut.IsAlreadyBound(this, &ThisClass::BlendOut_CycleWeapon))
 	{
 		AnimInstance->OnMontageBlendingOut.RemoveDynamic(this, &ThisClass::BlendOut_CycleWeapon);
 	}
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
-	
+
 	OnReticleChanged.Broadcast(CurrentWeapon->GetReticleDynamicMaterialInstance(), CurrentWeapon->ReticleParams);
-	OnAmmoCounterChanged.Broadcast(CurrentWeapon->GetAmmoCounterDynamicMaterialInstance(), CurrentWeapon->Ammo, CurrentWeapon->MagCapacity);
-	OnCurrentReserveeAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
-	
-	if (bTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto && CurrentWeapon->Ammo > 0)
+	OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
+
+	if (bFireTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto && CurrentWeapon->Ammo > 0)
 	{
-		Local_FireWeapon();
+		Local_FireWeaponPressed();
 	}
 }
 
-void UES1CombatComponent::Server_FireWeapon_Implementation(const FHitResult& Hit)
+void UES1CombatComponent::Local_FireWeaponPressed()
 {
-	if (!IsValid(CurrentWeapon)) return;
+	if (!IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
+	bFireTriggerPressed = true;
+	
+	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Firing;
+		
+	PlayFireWeapon(HitTarget);
+
+	OnRoundFired.Broadcast(CurrentWeapon->Ammo, CurrentReserveAmmo);
+	
+	Server_FireWeaponPressed(HitTarget);
+	
+	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &ThisClass::FireTimerFinished, CurrentWeapon->FireTime);
+}
+
+void UES1CombatComponent::Server_FireWeaponPressed_Implementation(const FVector_NetQuantize& TraceHitTarget)
+{
+	if (!IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
+
 	if (CurrentWeapon->Ammo <= 0) return;
 	
-	if (IsValid(Hit.GetActor()) && Hit.GetActor()->Implements<UES1PlayerInterface>())
-	{
-		IES1PlayerInterface::Execute_DoDamage(Hit.GetActor(), CurrentWeapon->Damage, GetOwner());
-	}
-	
-	if (GetNetMode() != NM_ListenServer || !Cast<APawn>(GetOwner())->IsLocallyControlled())
-	{
-		CurrentWeapon->Auth_Fire();
-	}
-	Multicast_FireWeapon(Hit, CurrentWeapon->Ammo);
+	HitTarget = TraceHitTarget;
+	CurrentWeapon->Auth_Fire(HitTarget);
+
+	Multicast_FireWeaponPressed(HitTarget, CurrentWeapon->Ammo);
 }
 
-void UES1CombatComponent::Multicast_FireWeapon_Implementation(const FHitResult& Hit, int32 AuthAmmo)
+void UES1CombatComponent::Multicast_FireWeaponPressed_Implementation(const FVector_NetQuantize& TraceHitTarget, int32 AuthAmmo)
 {
+	if (!IsValid(CurrentWeapon)) return;
+	if (GetNetMode() == NM_DedicatedServer) return;
+	
 	APawn* OwningPawn = Cast<APawn>(GetOwner());
 	if (!IsValid(OwningPawn)) return;
-	
+
 	if (OwningPawn->IsLocallyControlled())
 	{
 		CurrentWeapon->Rep_Fire(AuthAmmo);
 	}
 	else
 	{
-		if (!IsValid(WeaponData)) return;
-		
-		EPhysicalSurface ImpactSurfaceType = Hit.PhysMaterial.IsValid(false) ? Hit.PhysMaterial->SurfaceType.GetValue() : SurfaceType1;
-		
-		UAnimationAsset* WeaponFireAnimation =	WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).WeaponFireAnim; 
-		USkeletalMeshComponent* WeaponMesh = CurrentWeapon->GetMesh();
-		if (IsValid(WeaponMesh) && IsValid(WeaponFireAnimation))
-		{
-			WeaponMesh->PlayAnimation(WeaponFireAnimation, 0.f);
-		}
-
-		CurrentWeapon->Local_Fire(Hit.ImpactPoint, Hit.ImpactNormal, ImpactSurfaceType);
-	
-		UAnimMontage* Montage = WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).PlayerFireMontage;
-		USkeletalMeshComponent* PlayerMesh = IES1PlayerInterface::Execute_GetPlayerMesh(GetOwner());
-		if (IsValid(Montage) && IsValid(PlayerMesh))
-		{
-			PlayerMesh->GetAnimInstance()->Montage_Play(Montage);
-		}
-		
-		
+		HitTarget = TraceHitTarget;
+		RemoteFireFXWaitTIme = 0.f;
+		PlayFireWeapon(TraceHitTarget);
 	}
+}
+
+void UES1CombatComponent::PlayFireWeapon(const FVector_NetQuantize& TraceHitTarget)
+{
+	APawn* OwningPawn = Cast<APawn>(GetOwner());
+	if (!IsValid(OwningPawn) || !IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
+	
+	USkeletalMeshComponent* PlayerMesh = IES1PlayerInterface::Execute_GetPlayerMesh(GetOwner());
+	UAnimInstance* AnimInstance = IsValid(PlayerMesh) ? PlayerMesh->GetAnimInstance() : nullptr;
+
+	if (!IsValid(PlayerMesh) || !IsValid(AnimInstance)) return;
+
+	const float Raised = AnimInstance->GetCurveValue("WeaponRaised");
+
+	if (Raised > 0.8f || RemoteFireFXWaitTIme > 0.3f)
+	{
+		RemoteFireFXWaitTIme = 0.f;
+
+		UAnimMontage* PlayerFireMontage = WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).PlayerFireMontage;
+		
+		if (IsValid(PlayerFireMontage))
+		{
+			AnimInstance->Montage_Play(PlayerFireMontage);
+			CurrentWeapon->Local_Fire(TraceHitTarget);
+		}
+	}
+	else
+	{
+		RemoteFireFXWaitTIme += GetWorld()->GetDeltaSeconds();
+		FVector_NetQuantize Captured = TraceHitTarget;
+		GetWorld()->GetTimerManager().SetTimerForNextTick(
+			[this, Captured]() { PlayFireWeapon(Captured); });
+	}
+	
+}
+
+void UES1CombatComponent::Server_FireWeaponReleased_Implementation()
+{
+	bFireTriggerPressed = false;
 }
 
 AES1Weapon* UES1CombatComponent::SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass)
@@ -343,77 +430,47 @@ void UES1CombatComponent::FireTimerFinished()
 {
 	APawn* OwningPawn = Cast<APawn>(GetOwner());
 	if (!IsValid(CurrentWeapon) || !IsValid(OwningPawn)) return;
-	
+
 	if (CurrentWeapon->Ammo == 0 && CurrentReserveAmmo > 0 && OwningPawn->IsLocallyControlled())
 	{
 		Local_ReloadWeapon();
 		Server_ReloadWeapon();
 		return;
 	}
-	
+
 	if (CurrentWeapon->WeaponStatus == ES1WeaponStatus::Firing)
 	{
 		CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
 	}
 	
-	if (bTriggerPressed && 
-		CurrentWeapon->FireType == ES1FireType::Auto && 
-		CurrentWeapon->Ammo > 0)
-		
+	if (bFireTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto && CurrentWeapon->Ammo > 0)
 	{
-		Local_FireWeapon();
+		Local_FireWeaponPressed();
 	}
 }
 
 void UES1CombatComponent::Local_Aim(bool bIsPressed)
 {
 	bAiming = bIsPressed;
-	OnAimingStatusChanged.Broadcast(bAiming);
 	if (AES1Character* Owner = Cast<AES1Character>(GetOwner()))
 		Owner->RefreshMovementGate();
+	OnAimingStatusChanged.Broadcast(bAiming);
 }
 
-void UES1CombatComponent::Local_FireWeapon()
+void UES1CombatComponent::Local_FireWeaponReleased()
 {
 	if (!IsValid(CurrentWeapon)) return;
-	if (!IsValid(WeaponData)) return;
-	
-	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Firing;
-	
-	UAnimMontage* Montage = WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).PlayerFireMontage;
-	USkeletalMeshComponent* PlayerMesh = IES1PlayerInterface::Execute_GetPlayerMesh(GetOwner());
-	if (IsValid(Montage) && IsValid(PlayerMesh))
-	{
-		PlayerMesh->GetAnimInstance()->Montage_Play(Montage);
-	}
-	
-	FHitResult Hit;
-	CurrentWeapon->WeaponTrace(Hit, TraceLength);
-	
-	EPhysicalSurface ImpactSurfaceType = Hit.PhysMaterial.IsValid(false) ? Hit.PhysMaterial->SurfaceType.GetValue() : SurfaceType1;
-	UAnimationAsset* WeaponFireAnimation =	WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).WeaponFireAnim; 
-	USkeletalMeshComponent* WeaponMesh = CurrentWeapon->GetMesh();
-	
-	if (IsValid(WeaponMesh) && IsValid(WeaponFireAnimation))
-	{
-		WeaponMesh->PlayAnimation(WeaponFireAnimation, 0.f);
-	}
-	CurrentWeapon->Local_Fire(Hit.ImpactPoint, Hit.ImpactNormal, ImpactSurfaceType);
-	
-	OnRoundFired.Broadcast(CurrentWeapon->Ammo, CurrentWeapon->MagCapacity, CurrentReserveAmmo);
-	
-	GetWorld()->GetTimerManager().SetTimer(FireTimer, this, &ThisClass::FireTimerFinished, CurrentWeapon->FireTime);
-	
-	Server_FireWeapon(Hit);
+	bFireTriggerPressed = false;
+	Server_FireWeaponReleased();
 }
 
 int32 UES1CombatComponent::AdvancedWeaponIndex()
 {
-	int32 Old = Local_WeaponIndex;
 	if (WeaponInventory.Num() >= 2)
 	{
 		Local_WeaponIndex = (Local_WeaponIndex + 1) % WeaponInventory.Num();
 	}
+
 	return Local_WeaponIndex;
 }
 
@@ -489,6 +546,8 @@ void UES1CombatComponent::SetCurrentWeapon(AES1Weapon* NewWeapon, AES1Weapon* La
 	if (!IsValid(CurrentWeapon)) return;
 	
 	CurrentWeapon->AttachToOwningPawn(OwningPawn);
+	if (AES1Character* Owner = Cast<AES1Character>(OwningPawn))
+		Owner->LinkAnimLayer();
 	
 	if (CurrentWeapon->Ammo == 0 && CurrentReserveAmmo > 0 && OwningPawn->IsLocallyControlled())
 	{
@@ -510,12 +569,7 @@ void UES1CombatComponent::Local_ReloadWeapon()
 		Mesh->GetAnimInstance()->Montage_Play(ReloadMontage);
 	}
 	
-	UAnimationAsset* WeaponReloadAnimation =	WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).WeaponReloadAnim; 
-	USkeletalMeshComponent* WeaponMesh = CurrentWeapon->GetMesh();
-	if (IsValid(WeaponMesh) && IsValid(WeaponReloadAnimation))
-	{
-		WeaponMesh->PlayAnimation(WeaponReloadAnimation, 0.f);
-	}
+	CurrentWeapon->PlayReload();
 	
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Reloading;
 }
@@ -530,8 +584,7 @@ void UES1CombatComponent::Client_ReloadWeapon_Implementation(int32 NewWeaponAmmo
 		CurrentWeapon->Ammo = NewWeaponAmmo;
 		CurrentReserveAmmo = NewCarriedAmmo;
 		
-		OnAmmoCounterChanged.Broadcast(CurrentWeapon->GetAmmoCounterDynamicMaterialInstance(), CurrentWeapon->Ammo, CurrentWeapon->MagCapacity);
-		OnCurrentReserveeAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
+		OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
 	}
 }
 

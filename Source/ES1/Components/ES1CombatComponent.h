@@ -1,17 +1,17 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1Define.h"
 #include "GameplayTagContainer.h"
 #include "Components/ActorComponent.h"
-#include "Equipments/ES1Weapon.h"
+#include "Types/ES1ReticleTypes.h"
 #include "ES1CombatComponent.generated.h"
 
+class AES1Character;
 class UES1WeaponData;
+class AES1Weapon;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FReticleChanged, UMaterialInstanceDynamic*, ReticleDynMatInst, const FReticleParams&, ReticleParams);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FAmmoCounterChanged, UMaterialInstanceDynamic*, AmmoCounterDynMatInst, int32, RoundCurrent, int32, RoundsMax);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FRoundFired, int32, RoundsCurrent, int32, RoundsMax, int32, RoundsInReserve);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FReticleChanged, UMaterialInstanceDynamic*, ReticleDynMatInst, const FES1ReticleParams&, ReticleParams);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnRoundFired, int32, RoundsCurrent, int32, RoundsInReserve);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FAimingStatusChanged, bool, bIsAiming);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FCurrentReserveAmmoChanged, int32, RoundsInReserve, int32, RoundsInWeapon, UMaterialInterface*, WeaponIconMaterial);
 
@@ -32,6 +32,7 @@ public:
 	TSubclassOf<UAnimInstance> GetCurrentWeaponAnimLayer() const;
 	FORCEINLINE AES1Weapon* GetCurrentWeapon() const { return CurrentWeapon; }
 	FORCEINLINE bool GetIsAiming() const { return bAiming; }
+	FORCEINLINE bool GetbFireTriggerPressed() const { return bFireTriggerPressed; }
 	
 	void Initiate_SwitchWeapon();
 	void Initiate_FireWeapon_Pressed();
@@ -55,26 +56,25 @@ public:
 	void InitializeWeaponWidgets() const;
 	
 	void AddAmmo(const FGameplayTag& WeaponType, int32 AmmoAmount);
-	
+
+	void TraceUnderCrosshairs(FHitResult& OutHit);
+
 	UPROPERTY(BlueprintAssignable)
 	FReticleChanged OnReticleChanged;
-	
+
 	UPROPERTY(BlueprintAssignable)
-	FAmmoCounterChanged OnAmmoCounterChanged;
-	
-	UPROPERTY(BlueprintAssignable)
-	FRoundFired OnRoundFired;
-	
+	FOnRoundFired OnRoundFired;
+
 	UPROPERTY(BlueprintAssignable)
 	FAimingStatusChanged OnAimingStatusChanged;
-	
+
 	UPROPERTY(BlueprintAssignable)
-	FCurrentReserveAmmoChanged OnCurrentReserveeAmmoChanged;
+	FCurrentReserveAmmoChanged OnCurrentReserveAmmoChanged;
 	
 	// Variables
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Weapon")
 	TObjectPtr<UES1WeaponData> WeaponData;
-	
+
 	UPROPERTY(ReplicatedUsing=OnRep_CurrentReserveAmmo)
 	int32 CurrentReserveAmmo;
 	
@@ -86,9 +86,11 @@ protected:
 	void BlendOut_CycleWeapon(UAnimMontage* Montage, bool bInterrupted);
 	
 	// Variables
-	UPROPERTY(EditDefaultsOnly, Category="ES1|Weapon")
-	float TraceLength;
-	
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
+	float BaseTraceLength;
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
+	float BaseTraceRadius;
 private:	
 	// Functions
 	UFUNCTION()
@@ -101,17 +103,24 @@ private:
 	void Server_Aim(bool bIsPressed);
 	
 	UFUNCTION(Server, Reliable)
-	void Server_FireWeapon(const FHitResult& Hit);
+	void Server_FireWeaponPressed(const FVector_NetQuantize& TraceHitTarget);
+
+	UFUNCTION(Server, Reliable)
+	void Server_FireWeaponReleased();
 	
 	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_FireWeapon(const FHitResult& Hit, int32 AuthAmmo);
+	void Multicast_FireWeaponPressed(const FVector_NetQuantize& TraceHitTarget, int32 AuthAmmo);
+
+	void PlayFireWeapon(const FVector_NetQuantize& TraceHitTarget);
 	
 	AES1Weapon* SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass);
 	
 	void FireTimerFinished();
 	
 	void Local_Aim(bool bIsPressed);
-	void Local_FireWeapon();
+	
+	void Local_FireWeaponPressed();
+	void Local_FireWeaponReleased();
 	
 	int32 AdvancedWeaponIndex();
 	
@@ -149,13 +158,13 @@ private:
 	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
 	bool bAiming;
 	
-	bool bTriggerPressed;
+	bool bFireTriggerPressed;
 	FTimerHandle FireTimer;
 	
-	UPROPERTY(BlueprintReadOnly, Replicated, meta=(AllowPrivateAccess=true))
-	bool bFiring;	
-	
-	TMap<FGameplayTag, int32> ReserveAmmo;
-	
 	int32 Local_WeaponIndex;
+
+	float RemoteFireFXWaitTIme = 0.f;
+	FVector_NetQuantize HitTarget;
+
+	TMap<FGameplayTag, int32> ReserveAmmo;
 };

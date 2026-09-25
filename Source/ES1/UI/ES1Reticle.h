@@ -1,57 +1,52 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1Define.h"
 #include "Blueprint/UserWidget.h"
+#include "Types/ES1ReticleTypes.h"
 #include "ES1Reticle.generated.h"
 
-class AES1Weapon;
 class UImage;
+class AES1Weapon;
 
 UCLASS()
 class ES1_API UES1Reticle : public UUserWidget
 {
 	GENERATED_BODY()
-	
+
 public:
+	// Functions
 	virtual void NativeOnInitialized() override;
-	virtual void  NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
-	
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
+
+	// Variables
 	UPROPERTY(meta=(BindWidget))
 	TObjectPtr<UImage> Image_Reticle;
-	
-	UPROPERTY(meta=(BindWidget))
-	TObjectPtr<UImage> Image_AmmoCounter;
-	
+
 private:
 	// Functions
 	UFUNCTION()
 	void OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);
-	
+
 	UFUNCTION()
 	void OnWeaponFirstReplicated(AES1Weapon* Weapon);
-	
+
 	UFUNCTION()
-	void OnReticleChanged(UMaterialInstanceDynamic* ReticleDynMatInst, const FReticleParams& ReticleParams);
-	
+	void OnReticleChanged(UMaterialInstanceDynamic* ReticleDynMatInst, const FES1ReticleParams& ReticleParams);
+
 	UFUNCTION()
-	void OnAmmoCounterChanged(UMaterialInstanceDynamic* AmmoCounterDynMatInst, int32 RoundsCurrent, int32 RoundsMax);
-	
+	void OnRoundFired(int32 RoundsCurrent, int32 RoundsInReserve);
+
 	UFUNCTION()
-	void OnRoundFired(int32 RoundsCurrent, int32 RoundsMax, int32 RoundsInReserve);
-	
-	UFUNCTION()
-	void OnAimingStatusChanged(bool bIsAiming);
-	
+	void OnAimingStatusChaged(bool bIsAiming);
+
 	// Variables
 	TWeakObjectPtr<UMaterialInstanceDynamic> CurrentReticle_DynMatInst;
-	TWeakObjectPtr<UMaterialInstanceDynamic> CurrentAmmoCounter_DynMatInst;
-	
-	FReticleParams CurrentReticleParams;
+
+	FES1ReticleParams CurrentReticleParams;
 	float BaseCornerScaleFactor;
-	float BaseShapeCutFactor;
-	float _BaseCornerScaleFactor_RoundFired;
-	float _BaseShapeCutFactor_RoundFired;
+	float BaseShapeCurFactor;
+	float _BaseCornerScaleFactor_RoundedFired;
+	float _BaseShapeCutFactor_RoundedFired;
 	float _BaseCornerScaleFactor_Aiming;
 	float _BaseShapeCutFactor_Aiming;
 	bool bAiming;
