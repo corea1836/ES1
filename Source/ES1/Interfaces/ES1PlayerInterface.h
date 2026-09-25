@@ -26,7 +26,7 @@ public:
 	void WeaponReplicated();
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	AES1BaseWeapon* GetCurrentWeapon();
+	AES1Weapon* GetCurrentWeapon();
 	
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	int32 GetReserveAmmo() const;

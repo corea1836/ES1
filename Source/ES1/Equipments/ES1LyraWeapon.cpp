@@ -1,0 +1,178 @@
+#include "Equipments/ES1LyraWeapon.h"
+
+#include "ES1GameplayTags.h"
+#include "KismetTraceUtils.h"
+#include "GameFramework/Character.h"
+#include "Interfaces/ES1PlayerInterface.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Types/ES1CoreTypes.h"
+
+AES1LyraWeapon::AES1LyraWeapon()
+{
+	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
+	bNetUseOwnerRelevancy = true;
+	
+	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>("Mesh");
+	Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+	Mesh->bReceivesDecals = false;
+	Mesh->CastShadow = true;
+	SetRootComponent(Mesh);
+	Mesh->SetHiddenInGame(true);
+	
+	AimFieldOfView = 200.f;
+	TraceRadius = 5.f;
+	FireTime = 0.1f;
+	Damage = 15.f;
+	
+	MagCapacity = 10;
+	Ammo = 5;
+	StartingCarriedAmmo = 10;
+	Sequence = 0;
+	
+	WeaponStatus = ES1WeaponStatus::Idle;
+}
+
+void AES1LyraWeapon::OnConstruction(const FTransform& Transform)
+{
+	Super::OnConstruction(Transform);
+}
+
+USkeletalMeshComponent* AES1LyraWeapon::GetMesh() const
+{
+	return Mesh;
+}
+
+UMaterialInstanceDynamic* AES1LyraWeapon::GetReticleDynamicMaterialInstance()
+{
+	if (!IsValid(DynMatInst_Reticle))
+	{
+		DynMatInst_Reticle = UMaterialInstanceDynamic::Create(ReticleMaterial, this);
+	}
+	
+	return DynMatInst_Reticle;
+}
+
+UMaterialInstanceDynamic* AES1LyraWeapon::GetAmmoCounterDynamicMaterialInstance()
+{
+	if (!IsValid(DynMatInst_AmmoCounter))
+	{
+		DynMatInst_AmmoCounter = UMaterialInstanceDynamic::Create(AmmoCounterMaterial, this);
+	}
+	
+	return DynMatInst_AmmoCounter;
+}
+
+void AES1LyraWeapon::AttachToOwningPawn(APawn* Pawn) const
+{
+	if (!IsValid(Pawn) || !Pawn->Implements<UES1PlayerInterface>()) return;
+	
+	SetMeshVisibilities(Pawn);
+	
+	const FName EquippedSocket = IES1PlayerInterface::Execute_GetWeaponEquippedSocket(Pawn, WeaponType);
+	USkeletalMeshComponent* PawnMesh = IES1PlayerInterface::Execute_GetPlayerMesh(Pawn);
+	
+	Mesh->AttachToComponent(PawnMesh, FAttachmentTransformRules::KeepRelativeTransform, EquippedSocket);
+}
+
+void AES1LyraWeapon::DetachFromOwningPawn()
+{
+	Mesh->DetachFromComponent(FDetachmentTransformRules::KeepRelativeTransform);
+	Mesh->SetHiddenInGame(true);
+}
+
+void AES1LyraWeapon::WeaponTrace(FHitResult& OutHit, float TraceLength)
+{
+	FCollisionQueryParams QueryParams;
+	QueryParams.bReturnPhysicalMaterial = true;
+	QueryParams.AddIgnoredActor(GetOwner());
+	
+	FCollisionResponseParams ResponseParams;
+	ResponseParams.CollisionResponse.SetAllChannels(ECR_Ignore);
+	ResponseParams.CollisionResponse.SetResponse(ECC_Pawn, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldStatic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_WorldDynamic, ECR_Block);
+	ResponseParams.CollisionResponse.SetResponse(ECC_PhysicsBody, ECR_Block);
+
+	ensure(GetInstigator());
+	if (APlayerController* PC = Cast<APlayerController>(GetInstigator()->GetController()); IsValid(PC))
+	{
+		FVector EyesWorldLocation;
+		FRotator EyesWorldRotation;
+		PC->GetActorEyesViewPoint(EyesWorldLocation, EyesWorldRotation);
+		
+		const FVector EyesWorldDirection = UKismetMathLibrary::GetForwardVector(EyesWorldRotation);
+		
+		const FVector Start = EyesWorldLocation + EyesWorldDirection * 25.f;
+		const FVector End = Start + EyesWorldDirection * TraceLength;
+		
+		const bool bHit = GetWorld()->SweepSingleByChannel(
+			OutHit,
+			Start,
+			End,
+			FQuat::Identity,
+			ES1TraceChannel::ECC_Weapon,
+			FCollisionShape::MakeSphere(TraceRadius),
+			QueryParams,
+			ResponseParams);
+		
+		if (!bHit)
+		{
+			OutHit.ImpactPoint = End;
+		}
+		
+		// DrawDebugSphereTraceSingle(
+		// 	GetWorld(),
+		// 	Start,
+		// 	End,
+		// 	TraceRadius,
+		// 	EDrawDebugTrace::ForDuration,
+		// 	bHit,
+		// 	OutHit,
+		// 	FColor::Green,
+		// 	FColor::Red,
+		// 	5.f);
+	}
+}
+
+void AES1LyraWeapon::Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal, TEnumAsByte<EPhysicalSurface> ImpactSurfaceType)
+{	
+	FireEffects(ImpactPoint, ImpactNormal, ImpactSurfaceType);
+	
+	if (GetInstigator()->IsLocallyControlled())
+	{
+		Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+		
+		if (!GetInstigator()->HasAuthority())
+		{
+			++Sequence;
+		}
+	}
+}
+
+void AES1LyraWeapon::Auth_Fire()
+{
+	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
+}
+
+void AES1LyraWeapon::Rep_Fire(int32 AuthAmmo)
+{
+	if (GetInstigator()->IsLocallyControlled() && !GetInstigator()->HasAuthority())
+	{
+		Ammo = AuthAmmo;
+		--Sequence;
+		Ammo -= Sequence;
+	}
+}
+
+void AES1LyraWeapon::BeginPlay()
+{
+	Super::BeginPlay();
+}
+
+void AES1LyraWeapon::SetMeshVisibilities(APawn* OwningPawn) const
+{
+	Mesh->SetHiddenInGame(false);
+}
+
+

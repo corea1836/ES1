@@ -12,7 +12,7 @@
 #include "Components/ES1InteractableComponent.h"
 #include "Components/ES1InteractorComponent.h"
 #include "Data/ES1WeaponData.h"
-#include "Equipments/ES1Weapon.h"
+#include "Equipments/ES1LyraWeapon.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Players/ES1PlayerController.h"
 #include "Types/ES1CoreTypes.h"
@@ -160,7 +160,7 @@ void AES1Character::WeaponReplicated_Implementation()
 }
 
 
-AES1BaseWeapon* AES1Character::GetCurrentWeapon_Implementation()
+AES1Weapon* AES1Character::GetCurrentWeapon_Implementation()
 {
 	return CombatComponent->GetCurrentWeapon();
 }

@@ -6,7 +6,7 @@
 #include "ES1Reticle.generated.h"
 
 class UImage;
-class AES1BaseWeapon;
+class AES1Weapon;
 
 UCLASS()
 class ES1_API UES1Reticle : public UUserWidget
@@ -28,13 +28,13 @@ private:
 	void OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn);
 
 	UFUNCTION()
-	void OnWeaponFirstReplicated(AES1BaseWeapon* Weapon);
+	void OnWeaponFirstReplicated(AES1Weapon* Weapon);
 
 	UFUNCTION()
 	void OnReticleChanged(UMaterialInstanceDynamic* ReticleDynMatInst, const FES1ReticleParams& ReticleParams);
 
 	UFUNCTION()
-	void OnFired();
+	void OnRoundFired(int32 RoundsCurrent, int32 RoundsInReserve);
 
 	UFUNCTION()
 	void OnAimingStatusChaged(bool bIsAiming);

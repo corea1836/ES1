@@ -1,13 +1,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1Weapon.h"
+#include "ES1LyraWeapon.h"
 #include "ES1ProjectileWeapon.generated.h"
 
 class AES1Projectile;
 
 UCLASS()
-class ES1_API AES1ProjectileWeapon : public AES1BaseWeapon
+class ES1_API AES1ProjectileWeapon : public AES1Weapon
 {
 	GENERATED_BODY()
 

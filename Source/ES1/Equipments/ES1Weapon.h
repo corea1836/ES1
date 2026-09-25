@@ -1,91 +1,116 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "ES1BaseWeapon.h"
 #include "GameplayTagContainer.h"
 #include "GameFramework/Actor.h"
+#include "Types/ES1ReticleTypes.h"
 #include "ES1Weapon.generated.h"
+
+class AES1BulletShell;
+
+UENUM(BlueprintType)
+enum class ES1FireType : uint8
+{
+	Auto UMETA(DisplayName = "Automatic"),
+	SemiAuto UMETA(DisplayName = "SemiAutomatic"),
+};
+
+UENUM(BlueprintType)
+enum class ES1WeaponStatus : uint8
+{
+	Idle, // Weapon doing nothing, can fire/reload/cycle
+	Firing, // Currently firing, can't reload/cycle
+	Reloading, // Currently reloading, can't fire/cycle
+	Cycling, // Currently cycling to the next weapon, can't fire/reload/ cycle
+	Unequipped // On our person, but can't do anything
+};
 
 UCLASS()
 class ES1_API AES1Weapon : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	// Functions
 	AES1Weapon();
-	virtual void OnConstruction(const FTransform& Transform) override;
-	
-	USkeletalMeshComponent* GetMesh() const;
-	UMaterialInstanceDynamic* GetReticleDynamicMaterialInstance();
-	UMaterialInstanceDynamic* GetAmmoCounterDynamicMaterialInstance();
-		
+	virtual void Tick(float DeltaTime) override;
+
 	void AttachToOwningPawn(APawn* Pawn) const;
 	void DetachFromOwningPawn();
-	void WeaponTrace(FHitResult& OutHit, float TraceLength);
-	
-	void Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal, TEnumAsByte<EPhysicalSurface> ImpactSurfaceType);
-	void Auth_Fire();
+
+	virtual void PlayFire(const FVector& HitTarget);
+
+	virtual void Local_Fire(const FVector& HitTarget);
+	virtual void Auth_Fire(const FVector& HitTarget);
 	void Rep_Fire(int32 AuthAmmo);
-	
+
+	virtual void PlayReload();
+
+	UMaterialInstanceDynamic* GetReticleDynamicMaterialInstance();
+
+	FORCEINLINE USkeletalMeshComponent* GetMesh() const { return Mesh; }
+
 	// Variables
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|WeaponType")
 	FGameplayTag WeaponType;
 	
+	UPROPERTY(VisibleAnywhere, Category="ES1|Status")
+	ES1WeaponStatus WeaponStatus;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Camera|Aming")
 	float AimFieldOfView;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="ES1|Trace")
-	float TraceRadius;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|FireType")
 	ES1FireType FireType;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|FireType")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|FireTime")
 	float FireTime;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Damage")
-	float Damage;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Ammo")
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
+	float TraceLength;
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Trace")
+	float TraceRadius;
+
+	UPROPERTY(EditAnywhere, Category="ES1|Ammo")
 	int32 MagCapacity;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Ammo")
+
+	UPROPERTY(EditAnywhere, Category="ES1|Ammo")
 	int32 Ammo;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Ammo")
+
+	UPROPERTY(EditAnywhere, Category="ES1|Ammo")
 	int32 StartingCarriedAmmo;
-	
+
+	UPROPERTY(EditAnywhere, Category="ES1|UI")
+	TObjectPtr<UMaterialInterface> ReticleMaterial;
+
+	UPROPERTY()
+	TObjectPtr<UMaterialInstanceDynamic> DynMatInst_Reticle;
+
+	UPROPERTY(EditDefaultsOnly, Category="ES1|Reticle")
+	FES1ReticleParams ReticleParams;
+
 	UPROPERTY(EditDefaultsOnly, Category="ES1|Icon")
 	TObjectPtr<UMaterialInterface> WeaponIcon;
 	
-	ES1WeaponStatus WeaponStatus;
-	
 protected:
-	virtual void BeginPlay() override;
-	
-	UFUNCTION(BlueprintImplementableEvent)
-	void FireEffects(const FVector& ImpactPoint, const FVector& ImpactNormal, EPhysicalSurface ImpactSurfaceType);
-
-private:
 	// Functions
-	void SetMeshVisibilities(APawn* OwningPawn) const;
-	
+	virtual void BeginPlay() override;
+
 	// Variables
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1 | Mesh",  meta=(AllowPrivateAccess=true))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Mesh", meta=(AllowPrivateAccess=true))
 	TObjectPtr<USkeletalMeshComponent> Mesh;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|BulletShell", meta=(AllowPrivateAccess=true))
+	TSubclassOf<AES1BulletShell> BulletShellClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Animation", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UAnimationAsset> FireAnimation;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Animation", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UAnimationAsset> ReloadAnimation;
+	
+private:
+	// Variables
 	int32 Sequence;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
-	TObjectPtr<UMaterialInterface> ReticleMaterial;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
-	TObjectPtr<UMaterialInterface> AmmoCounterMaterial;
-	
-	UPROPERTY()
-	TObjectPtr<UMaterialInstanceDynamic> DynMatInst_Reticle;
-	
-	UPROPERTY()
-	TObjectPtr<UMaterialInstanceDynamic> DynMatInst_AmmoCounter;
 };

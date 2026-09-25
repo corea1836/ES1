@@ -16,6 +16,7 @@ UES1CombatComponent::UES1CombatComponent()
 
 	BaseTraceLength = 20'000;
 	BaseTraceRadius = 0.5f;
+	Local_WeaponIndex = 0;
 }
 
 void UES1CombatComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
@@ -47,16 +48,16 @@ void UES1CombatComponent::Initiate_SwitchWeapon()
 	if (!IsValid(CurrentWeapon)) return;
 		
 	if (CurrentWeapon->WeaponStatus == ES1WeaponStatus::Cycling) return;
+
 	AdvancedWeaponIndex();
 	Local_CycleWeapon(Local_WeaponIndex);
-	
 }
 
 void UES1CombatComponent::Initiate_FireWeapon_Pressed()
 {
 	if (!IsValid(CurrentWeapon)) return;
 
-	if (CurrentWeapon->Ammo > 0)
+	if (CurrentWeapon->WeaponStatus == ES1WeaponStatus::Idle && CurrentWeapon->Ammo > 0)
 		Local_FireWeaponPressed();
 }
 
@@ -74,7 +75,7 @@ void UES1CombatComponent::Initiate_ReloadWeapon()
 	if (CurrentWeapon->WeaponStatus == ES1WeaponStatus::Cycling || 
 		CurrentWeapon->WeaponStatus == ES1WeaponStatus::Reloading) return;
 	
-	// if (CurrentWeapon->Ammo == CurrentWeapon->MagCapacity) return;
+	if (CurrentWeapon->Ammo == CurrentWeapon->MagCapacity) return;
 	if (CurrentReserveAmmo == 0) return;
 	
 	Local_ReloadWeapon();
@@ -96,7 +97,7 @@ void UES1CombatComponent::Initiate_Aim_Released()
 void UES1CombatComponent::Notify_CycleWeapon()
 {
 	if (!IsValid(CurrentWeapon)) return;
-	AES1BaseWeapon* NewWeapon = WeaponInventory[Local_WeaponIndex];
+	AES1Weapon* NewWeapon = WeaponInventory[Local_WeaponIndex];
 	if (IsValid(NewWeapon))
 	{
 		EquipWeapon(NewWeapon);
@@ -107,26 +108,26 @@ void UES1CombatComponent::Notify_ReloadWeapon()
 {
 	if (!IsValid(CurrentWeapon)) return;
 	
-	// if (GetNetMode() == NM_ListenServer ||
-	// 	GetNetMode() == NM_DedicatedServer ||
-	// 	GetNetMode() == NM_Standalone)
-	// {
-	// 	const int32 EmptySpace = CurrentWeapon->MagCapacity - CurrentWeapon->Ammo;
-	// 	const int32 AmountToRefill = FMath::Min(EmptySpace, CurrentReserveAmmo);
-	// 	CurrentWeapon->Ammo += AmountToRefill;
-	// 	ReserveAmmo[CurrentWeapon->WeaponType] = ReserveAmmo[CurrentWeapon->WeaponType] - AmountToRefill;
-	// 	CurrentReserveAmmo = ReserveAmmo[CurrentWeapon->WeaponType];
-	// 	Client_ReloadWeapon(CurrentWeapon->Ammo, CurrentReserveAmmo);
-	// }
-	//
-	// CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
-	// if (bFireTriggerPressed && CurrentWeapon->Ammo > 0)
-	// {
-	// 	Local_FireWeaponPressed();
-	// }
+	if (GetNetMode() == NM_ListenServer ||
+		GetNetMode() == NM_DedicatedServer ||
+		GetNetMode() == NM_Standalone)
+	{
+		const int32 EmptySpace = CurrentWeapon->MagCapacity - CurrentWeapon->Ammo;
+		const int32 AmountToRefill = FMath::Min(EmptySpace, CurrentReserveAmmo);
+		CurrentWeapon->Ammo += AmountToRefill;
+		ReserveAmmo[CurrentWeapon->WeaponType] = ReserveAmmo[CurrentWeapon->WeaponType] - AmountToRefill;
+		CurrentReserveAmmo = ReserveAmmo[CurrentWeapon->WeaponType];
+		Client_ReloadWeapon(CurrentWeapon->Ammo, CurrentReserveAmmo);
+	}
+	
+	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
+	if (bFireTriggerPressed && CurrentWeapon->Ammo > 0)
+	{
+		Local_FireWeaponPressed();
+	}
 }
 
-void UES1CombatComponent::OnRep_CurrentWeapon(AES1BaseWeapon* LastWeapon)
+void UES1CombatComponent::OnRep_CurrentWeapon(AES1Weapon* LastWeapon)
 {
 	SetCurrentWeapon(CurrentWeapon, LastWeapon);
 	 
@@ -136,10 +137,10 @@ void UES1CombatComponent::OnRep_CurrentWeapon(AES1BaseWeapon* LastWeapon)
 
 void UES1CombatComponent::OnRep_CurrentReserveAmmo()
 {
-	// if (IsValid(CurrentWeapon))
-	// {
-	// 	OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
-	// }
+	if (IsValid(CurrentWeapon))
+	{
+		OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
+	}
 }
 
 void UES1CombatComponent::Server_Aim_Implementation(bool bIsPressed)
@@ -147,16 +148,16 @@ void UES1CombatComponent::Server_Aim_Implementation(bool bIsPressed)
 	Local_Aim(bIsPressed);
 }
 
-void UES1CombatComponent::Equip(AES1BaseWeapon* Weapon)
+void UES1CombatComponent::Equip(AES1Weapon* Weapon)
 {
 	CurrentWeapon = Weapon;
 	CurrentWeapon->AttachToOwningPawn(Cast<APawn>(GetOwner()));
-	//
-	// CurrentReserveAmmo = ReserveAmmo.FindChecked(CurrentWeapon->WeaponType);
-	// OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, Weapon->Ammo, CurrentWeapon->WeaponIcon);
+
+	CurrentReserveAmmo = ReserveAmmo.FindChecked(CurrentWeapon->WeaponType);
+	OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, Weapon->Ammo, CurrentWeapon->WeaponIcon);
 }
 
-void UES1CombatComponent::EquipWeapon(AES1BaseWeapon* Weapon)
+void UES1CombatComponent::EquipWeapon(AES1Weapon* Weapon)
 {
 	if (!IsValid(Weapon) || !IsValid(GetOwner())) return;
 	if (GetOwner()->GetLocalRole() == ROLE_Authority)
@@ -169,7 +170,7 @@ void UES1CombatComponent::EquipWeapon(AES1BaseWeapon* Weapon)
 	}
 }
 
-void UES1CombatComponent::Server_EquipWeapon_Implementation(AES1BaseWeapon* Weapon)
+void UES1CombatComponent::Server_EquipWeapon_Implementation(AES1Weapon* Weapon)
 {
 	EquipWeapon(Weapon);
 }
@@ -178,11 +179,11 @@ void UES1CombatComponent::SpawnInventory()
 {
 	if (GetOwner()->GetLocalRole() < ROLE_Authority) return;
 	
-	for (TSubclassOf<AES1BaseWeapon>& WeaponClass : DefaultWeaponClasses)
+	for (TSubclassOf<AES1Weapon>& WeaponClass : DefaultWeaponClasses)
 	{
-		AES1BaseWeapon* Weapon = SpawnWeapon(WeaponClass);
+		AES1Weapon* Weapon = SpawnWeapon(WeaponClass);
 		WeaponInventory.AddUnique(Weapon);
-		// ReserveAmmo.Add(Weapon->WeaponType, Weapon->StartingCarriedAmmo);
+		ReserveAmmo.Add(Weapon->WeaponType, Weapon->StartingCarriedAmmo);
 	}
 	
 	if (WeaponInventory.Num() > 0)
@@ -194,7 +195,7 @@ void UES1CombatComponent::SpawnInventory()
 
 void UES1CombatComponent::DestroyInventory()
 {
-	for (AES1BaseWeapon* Weapon : WeaponInventory)
+	for (AES1Weapon* Weapon : WeaponInventory)
 	{
 		if (IsValid(Weapon))
 		{
@@ -314,15 +315,14 @@ void UES1CombatComponent::BlendOut_CycleWeapon(UAnimMontage* Montage, bool bInte
 		AnimInstance->OnMontageBlendingOut.RemoveDynamic(this, &ThisClass::BlendOut_CycleWeapon);
 	}
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
-	
-	// OnReticleChanged.Broadcast(CurrentWeapon->GetReticleDynamicMaterialInstance(), CurrentWeapon->ReticleParams);
-	// OnAmmoCounterChanged.Broadcast(CurrentWeapon->GetAmmoCounterDynamicMaterialInstance(), CurrentWeapon->Ammo, CurrentWeapon->MagCapacity);
-	// OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
-	
-	// if (bFireTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto && CurrentWeapon->Ammo > 0)
-	// {
-	// 	Local_FireWeaponPressed();
-	// }
+
+	OnReticleChanged.Broadcast(CurrentWeapon->GetReticleDynamicMaterialInstance(), CurrentWeapon->ReticleParams);
+	OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
+
+	if (bFireTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto && CurrentWeapon->Ammo > 0)
+	{
+		Local_FireWeaponPressed();
+	}
 }
 
 void UES1CombatComponent::Local_FireWeaponPressed()
@@ -331,10 +331,10 @@ void UES1CombatComponent::Local_FireWeaponPressed()
 	bFireTriggerPressed = true;
 	
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Firing;
-
-	OnFired.Broadcast();
-	
+		
 	PlayFireWeapon(HitTarget);
+
+	OnRoundFired.Broadcast(CurrentWeapon->Ammo, CurrentReserveAmmo);
 	
 	Server_FireWeaponPressed(HitTarget);
 	
@@ -344,9 +344,10 @@ void UES1CombatComponent::Local_FireWeaponPressed()
 void UES1CombatComponent::Server_FireWeaponPressed_Implementation(const FVector_NetQuantize& TraceHitTarget)
 {
 	if (!IsValid(CurrentWeapon) || !IsValid(WeaponData)) return;
+
+	if (CurrentWeapon->Ammo <= 0) return;
 	
 	HitTarget = TraceHitTarget;
-
 	CurrentWeapon->Auth_Fire(HitTarget);
 
 	Multicast_FireWeaponPressed(HitTarget, CurrentWeapon->Ammo);
@@ -411,7 +412,7 @@ void UES1CombatComponent::Server_FireWeaponReleased_Implementation()
 	bFireTriggerPressed = false;
 }
 
-AES1BaseWeapon* UES1CombatComponent::SpawnWeapon(TSubclassOf<AES1BaseWeapon> WeaponClass)
+AES1Weapon* UES1CombatComponent::SpawnWeapon(TSubclassOf<AES1Weapon> WeaponClass)
 {
 	AActor* OwningActor = GetOwner();
 	if (!IsValid(OwningActor)) return nullptr;
@@ -422,13 +423,25 @@ AES1BaseWeapon* UES1CombatComponent::SpawnWeapon(TSubclassOf<AES1BaseWeapon> Wea
 	SpawnInfo.Owner = OwningActor;
 	SpawnInfo.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	
-	return GetWorld()->SpawnActor<AES1BaseWeapon>(WeaponClass, SpawnInfo);
+	return GetWorld()->SpawnActor<AES1Weapon>(WeaponClass, SpawnInfo);
 }
 
 void UES1CombatComponent::FireTimerFinished()
 {
 	APawn* OwningPawn = Cast<APawn>(GetOwner());
 	if (!IsValid(CurrentWeapon) || !IsValid(OwningPawn)) return;
+
+	if (CurrentWeapon->Ammo == 0 && CurrentReserveAmmo > 0 && OwningPawn->IsLocallyControlled())
+	{
+		Local_ReloadWeapon();
+		Server_ReloadWeapon();
+		return;
+	}
+
+	if (CurrentWeapon->WeaponStatus == ES1WeaponStatus::Firing)
+	{
+		CurrentWeapon->WeaponStatus = ES1WeaponStatus::Idle;
+	}
 	
 	if (bFireTriggerPressed && CurrentWeapon->FireType == ES1FireType::Auto && CurrentWeapon->Ammo > 0)
 	{
@@ -453,17 +466,17 @@ void UES1CombatComponent::Local_FireWeaponReleased()
 
 int32 UES1CombatComponent::AdvancedWeaponIndex()
 {
-	int32 Old = Local_WeaponIndex;
 	if (WeaponInventory.Num() >= 2)
 	{
 		Local_WeaponIndex = (Local_WeaponIndex + 1) % WeaponInventory.Num();
 	}
+
 	return Local_WeaponIndex;
 }
 
 void UES1CombatComponent::Local_CycleWeapon(int32 WeaponIndex)
 {
-	AES1BaseWeapon* NextWeapon = WeaponInventory[WeaponIndex];
+	AES1Weapon* NextWeapon = WeaponInventory[WeaponIndex];
 	if (!IsValid(NextWeapon) || !IsValid(WeaponData)) return;
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Cycling;
 	NextWeapon->WeaponStatus = ES1WeaponStatus::Cycling;
@@ -503,9 +516,9 @@ void UES1CombatComponent::Multicast_CycleWeapon_Implementation(int32 WeaponIndex
 	}
 }
 
-void UES1CombatComponent::SetCurrentWeapon(AES1BaseWeapon* NewWeapon, AES1BaseWeapon* LastWeapon)
+void UES1CombatComponent::SetCurrentWeapon(AES1Weapon* NewWeapon, AES1Weapon* LastWeapon)
 {
-	AES1BaseWeapon* LocalLastWeapon = nullptr;
+	AES1Weapon* LocalLastWeapon = nullptr;
 	
 	if (IsValid(LastWeapon))
 	{
@@ -525,10 +538,10 @@ void UES1CombatComponent::SetCurrentWeapon(AES1BaseWeapon* NewWeapon, AES1BaseWe
 	CurrentWeapon = NewWeapon;
 	APawn* OwningPawn = Cast<APawn>(GetOwner());
 	if (!IsValid(OwningPawn)) return;
-	// if (OwningPawn->HasAuthority() && IsValid(CurrentWeapon))
-	// {
-	// 	CurrentReserveAmmo = ReserveAmmo.FindChecked(CurrentWeapon->WeaponType);
-	// }
+	if (OwningPawn->HasAuthority() && IsValid(CurrentWeapon))
+	{
+		CurrentReserveAmmo = ReserveAmmo.FindChecked(CurrentWeapon->WeaponType);
+	}
 	
 	if (!IsValid(CurrentWeapon)) return;
 	
@@ -536,11 +549,11 @@ void UES1CombatComponent::SetCurrentWeapon(AES1BaseWeapon* NewWeapon, AES1BaseWe
 	if (AES1Character* Owner = Cast<AES1Character>(OwningPawn))
 		Owner->LinkAnimLayer();
 	
-	// if (CurrentWeapon->Ammo == 0 && CurrentReserveAmmo > 0 && OwningPawn->IsLocallyControlled())
-	// {
-	// 	Local_ReloadWeapon();
-	// 	Server_ReloadWeapon();
-	// }
+	if (CurrentWeapon->Ammo == 0 && CurrentReserveAmmo > 0 && OwningPawn->IsLocallyControlled())
+	{
+		Local_ReloadWeapon();
+		Server_ReloadWeapon();
+	}
 }
 
 void UES1CombatComponent::Local_ReloadWeapon()
@@ -556,12 +569,7 @@ void UES1CombatComponent::Local_ReloadWeapon()
 		Mesh->GetAnimInstance()->Montage_Play(ReloadMontage);
 	}
 	
-	UAnimationAsset* WeaponReloadAnimation =	WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).WeaponReloadAnim; 
-	USkeletalMeshComponent* WeaponMesh = CurrentWeapon->GetMesh();
-	if (IsValid(WeaponMesh) && IsValid(WeaponReloadAnimation))
-	{
-		WeaponMesh->PlayAnimation(WeaponReloadAnimation, 0.f);
-	}
+	CurrentWeapon->PlayReload();
 	
 	CurrentWeapon->WeaponStatus = ES1WeaponStatus::Reloading;
 }
@@ -571,14 +579,13 @@ void UES1CombatComponent::Client_ReloadWeapon_Implementation(int32 NewWeaponAmmo
 	APawn* OwningPawn = Cast<APawn>(GetOwner());
 	if (!IsValid(CurrentWeapon) || !IsValid(OwningPawn)) return;
 	
-	// if (OwningPawn->IsLocallyControlled())
-	// {
-	// 	CurrentWeapon->Ammo = NewWeaponAmmo;
-	// 	CurrentReserveAmmo = NewCarriedAmmo;
-	// 	
-	// 	OnAmmoCounterChanged.Broadcast(CurrentWeapon->GetAmmoCounterDynamicMaterialInstance(), CurrentWeapon->Ammo, CurrentWeapon->MagCapacity);
-	// 	OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
-	// }
+	if (OwningPawn->IsLocallyControlled())
+	{
+		CurrentWeapon->Ammo = NewWeaponAmmo;
+		CurrentReserveAmmo = NewCarriedAmmo;
+		
+		OnCurrentReserveAmmoChanged.Broadcast(CurrentReserveAmmo, CurrentWeapon->Ammo, CurrentWeapon->WeaponIcon);
+	}
 }
 
 void UES1CombatComponent::Server_ReloadWeapon_Implementation()

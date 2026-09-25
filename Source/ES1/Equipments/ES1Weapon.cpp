@@ -1,77 +1,55 @@
-#include "Equipments/ES1Weapon.h"
+#include "ES1Weapon.h"
 
-#include "ES1GameplayTags.h"
-#include "KismetTraceUtils.h"
-#include "GameFramework/Character.h"
+#include "ES1BulletShell.h"
+#include "Engine/SkeletalMeshSocket.h"
 #include "Interfaces/ES1PlayerInterface.h"
-#include "Kismet/KismetMathLibrary.h"
-#include "Types/ES1CoreTypes.h"
 
 AES1Weapon::AES1Weapon()
 {
 	PrimaryActorTick.bCanEverTick = false;
 	bReplicates = true;
 	bNetUseOwnerRelevancy = true;
-	
-	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>("Mesh");
-	Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
+
+	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
+	// Mesh->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	Mesh->bReceivesDecals = false;
 	Mesh->CastShadow = true;
 	SetRootComponent(Mesh);
-	Mesh->SetHiddenInGame(true);
-	
+	Mesh->SetHiddenInGame(false);
+
 	AimFieldOfView = 200.f;
-	TraceRadius = 5.f;
 	FireTime = 0.1f;
-	Damage = 15.f;
-	
-	MagCapacity = 10;
+
+	TraceLength = 20'000;
+
 	Ammo = 5;
 	StartingCarriedAmmo = 10;
-	Sequence = 0;
-	
+	Sequence;
+
 	WeaponStatus = ES1WeaponStatus::Idle;
 }
 
-void AES1Weapon::OnConstruction(const FTransform& Transform)
+void AES1Weapon::BeginPlay()
 {
-	Super::OnConstruction(Transform);
-}
-
-USkeletalMeshComponent* AES1Weapon::GetMesh() const
-{
-	return Mesh;
-}
-
-UMaterialInstanceDynamic* AES1Weapon::GetReticleDynamicMaterialInstance()
-{
-	if (!IsValid(DynMatInst_Reticle))
-	{
-		DynMatInst_Reticle = UMaterialInstanceDynamic::Create(ReticleMaterial, this);
-	}
+	Super::BeginPlay();
 	
-	return DynMatInst_Reticle;
 }
 
-UMaterialInstanceDynamic* AES1Weapon::GetAmmoCounterDynamicMaterialInstance()
+void AES1Weapon::Tick(float DeltaTime)
 {
-	if (!IsValid(DynMatInst_AmmoCounter))
-	{
-		DynMatInst_AmmoCounter = UMaterialInstanceDynamic::Create(AmmoCounterMaterial, this);
-	}
-	
-	return DynMatInst_AmmoCounter;
+	Super::Tick(DeltaTime);
 }
 
 void AES1Weapon::AttachToOwningPawn(APawn* Pawn) const
 {
 	if (!IsValid(Pawn) || !Pawn->Implements<UES1PlayerInterface>()) return;
-	
-	SetMeshVisibilities(Pawn);
-	
+
+	Mesh->SetVisibility(true);
+	Mesh->SetHiddenInGame(false);
+
 	const FName EquippedSocket = IES1PlayerInterface::Execute_GetWeaponEquippedSocket(Pawn, WeaponType);
 	USkeletalMeshComponent* PawnMesh = IES1PlayerInterface::Execute_GetPlayerMesh(Pawn);
-	
+
 	Mesh->AttachToComponent(PawnMesh, FAttachmentTransformRules::KeepRelativeTransform, EquippedSocket);
 }
 
@@ -81,83 +59,48 @@ void AES1Weapon::DetachFromOwningPawn()
 	Mesh->SetHiddenInGame(true);
 }
 
-void AES1Weapon::WeaponTrace(FHitResult& OutHit, float TraceLength)
+void AES1Weapon::PlayFire(const FVector& HitTarget)
 {
-	FCollisionQueryParams QueryParams;
-	QueryParams.bReturnPhysicalMaterial = true;
-	QueryParams.AddIgnoredActor(GetOwner());
-	
-	FCollisionResponseParams ResponseParams;
-	ResponseParams.CollisionResponse.SetAllChannels(ECR_Ignore);
-	ResponseParams.CollisionResponse.SetResponse(ECC_Pawn, ECR_Block);
-	ResponseParams.CollisionResponse.SetResponse(ECC_WorldStatic, ECR_Block);
-	ResponseParams.CollisionResponse.SetResponse(ECC_WorldDynamic, ECR_Block);
-	ResponseParams.CollisionResponse.SetResponse(ECC_PhysicsBody, ECR_Block);
+	if (!IsValid(FireAnimation)) return;
+	Mesh->PlayAnimation(FireAnimation, false);
 
-	ensure(GetInstigator());
-	if (APlayerController* PC = Cast<APlayerController>(GetInstigator()->GetController()); IsValid(PC))
+	if (BulletShellClass)
 	{
-		FVector EyesWorldLocation;
-		FRotator EyesWorldRotation;
-		PC->GetActorEyesViewPoint(EyesWorldLocation, EyesWorldRotation);
-		
-		const FVector EyesWorldDirection = UKismetMathLibrary::GetForwardVector(EyesWorldRotation);
-		
-		const FVector Start = EyesWorldLocation + EyesWorldDirection * 25.f;
-		const FVector End = Start + EyesWorldDirection * TraceLength;
-		
-		const bool bHit = GetWorld()->SweepSingleByChannel(
-			OutHit,
-			Start,
-			End,
-			FQuat::Identity,
-			ES1TraceChannel::ECC_Weapon,
-			FCollisionShape::MakeSphere(TraceRadius),
-			QueryParams,
-			ResponseParams);
-		
-		if (!bHit)
+		const USkeletalMeshSocket* AmmoEjectSocket = Mesh->GetSocketByName(FName("AmmoEject"));
+		if (AmmoEjectSocket)
 		{
-			OutHit.ImpactPoint = End;
+			FTransform SocketTransform = AmmoEjectSocket->GetSocketTransform(Mesh);
+
+			if (UWorld* World = GetWorld(); IsValid(World))
+			{
+				World->SpawnActor<AES1BulletShell>(
+					BulletShellClass,
+					SocketTransform.GetLocation(),
+					SocketTransform.GetRotation().Rotator()
+				);
+			}
 		}
-		
-		// DrawDebugSphereTraceSingle(
-		// 	GetWorld(),
-		// 	Start,
-		// 	End,
-		// 	TraceRadius,
-		// 	EDrawDebugTrace::ForDuration,
-		// 	bHit,
-		// 	OutHit,
-		// 	FColor::Green,
-		// 	FColor::Red,
-		// 	5.f);
 	}
 }
 
-void AES1Weapon::Local_Fire(const FVector& ImpactPoint, const FVector& ImpactNormal, TEnumAsByte<EPhysicalSurface> ImpactSurfaceType)
-{	
-	FireEffects(ImpactPoint, ImpactNormal, ImpactSurfaceType);
-	
+void AES1Weapon::Local_Fire(const FVector& HitTarget)
+{
+	PlayFire(HitTarget);
 	if (GetInstigator()->IsLocallyControlled())
 	{
 		Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
-		
-		if (!GetInstigator()->HasAuthority())
-		{
-			++Sequence;
-		}
+		++Sequence;
 	}
 }
 
-void AES1Weapon::Auth_Fire()
+void AES1Weapon::Auth_Fire(const FVector& HitTarget)
 {
 	Ammo = FMath::Clamp(Ammo - 1, 0, MagCapacity);
 }
 
 void AES1Weapon::Rep_Fire(int32 AuthAmmo)
 {
-	if (GetInstigator()->IsLocallyControlled() && !GetInstigator()->HasAuthority())
+	if (GetInstigator()->IsLocallyControlled())
 	{
 		Ammo = AuthAmmo;
 		--Sequence;
@@ -165,14 +108,19 @@ void AES1Weapon::Rep_Fire(int32 AuthAmmo)
 	}
 }
 
-void AES1Weapon::BeginPlay()
+void AES1Weapon::PlayReload()
 {
-	Super::BeginPlay();
+	if (!IsValid(ReloadAnimation)) return;
+
+	Mesh->PlayAnimation(ReloadAnimation, false);
 }
 
-void AES1Weapon::SetMeshVisibilities(APawn* OwningPawn) const
+UMaterialInstanceDynamic* AES1Weapon::GetReticleDynamicMaterialInstance()
 {
-	Mesh->SetHiddenInGame(false);
+	if (!IsValid(DynMatInst_Reticle))
+	{
+		DynMatInst_Reticle = UMaterialInstanceDynamic::Create(ReticleMaterial, this);
+	}
+	return DynMatInst_Reticle;
 }
-
 

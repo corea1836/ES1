@@ -30,7 +30,7 @@ void UES1Reticle::NativeOnInitialized()
 
 	if (Character->HasWeaponFirstReplicated())
 	{
-		AES1BaseWeapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
+		AES1Weapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
 		if (IsValid(Weapon))
 		{
 			OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
@@ -43,7 +43,7 @@ void UES1Reticle::NativeOnInitialized()
 
 	if (Character->HasAuthority())
 	{
-		AES1BaseWeapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
+		AES1Weapon* Weapon = IES1PlayerInterface::Execute_GetCurrentWeapon(Character);
 		if (IsValid(Weapon))
 		{
 			OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
@@ -77,7 +77,7 @@ void UES1Reticle::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
 	if (IsValid(OldCombatComponent))
 	{
 		OldCombatComponent->OnReticleChanged.RemoveDynamic(this, &ThisClass::OnReticleChanged);
-		OldCombatComponent->OnFired.RemoveDynamic(this, &ThisClass::OnFired);
+		OldCombatComponent->OnRoundFired.RemoveDynamic(this, &ThisClass::OnRoundFired);
 		OldCombatComponent->OnAimingStatusChanged.RemoveDynamic(this, &ThisClass::OnAimingStatusChaged);
 	}
 
@@ -86,12 +86,12 @@ void UES1Reticle::OnPossessedPawnChanged(APawn* OldPawn, APawn* NewPawn)
 	{
 		Image_Reticle->SetRenderOpacity(1.f);
 		NewCombatComponent->OnReticleChanged.AddDynamic(this, &ThisClass::OnReticleChanged);
-		NewCombatComponent->OnFired.AddDynamic(this, &ThisClass::OnFired);
+		NewCombatComponent->OnRoundFired.AddDynamic(this, &ThisClass::OnRoundFired);
 		NewCombatComponent->OnAimingStatusChanged.AddDynamic(this, &ThisClass::OnAimingStatusChaged);
 	}
 }
 
-void UES1Reticle::OnWeaponFirstReplicated(AES1BaseWeapon* Weapon)
+void UES1Reticle::OnWeaponFirstReplicated(AES1Weapon* Weapon)
 {
 	OnReticleChanged(Weapon->GetReticleDynamicMaterialInstance(), Weapon->ReticleParams);
 }
@@ -115,7 +115,7 @@ void UES1Reticle::OnReticleChanged(UMaterialInstanceDynamic* ReticleDynMatInst, 
 	}
 }
 
-void UES1Reticle::OnFired()
+void UES1Reticle::OnRoundFired(int32 RoundsCurrent, int32 RoundsInReserve)
 {
 	_BaseCornerScaleFactor_RoundedFired += CurrentReticleParams.ScaleFactor_RoundFired;
 	_BaseShapeCutFactor_RoundedFired += CurrentReticleParams.ShapeCutFactor_RoundFired;

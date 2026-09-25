@@ -36,7 +36,7 @@ protected:
 	TObjectPtr<UES1CombatComponent> CombatComponent;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
-	TObjectPtr<AES1BaseWeapon> CurrentWeapon;
+	TObjectPtr<AES1Weapon> CurrentWeapon;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Reference")
 	TObjectPtr<UES1AttributeComponent> AttributeComponent;
