@@ -93,6 +93,8 @@ private:
 	void Input_Aim_Pressed();
 	void Input_Aim_Released();
 	void Input_ReloadWeapon();
+	void Input_Sprint_Pressed();
+	void Input_Sprint_Released();
 	
 	virtual void OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
 	virtual void OnEndCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust) override;
@@ -154,6 +156,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UInputAction> ReloadWeaponAction;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="ES1|Input", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UInputAction> SprintAction;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|UI", meta=(AllowPrivateAccess=true))
 	TSubclassOf<UUserWidget> PlayerOverlayWidgetClass;
 	
@@ -163,4 +168,6 @@ private:
 	bool bWeaponFirstReplicated;
 	
 	bool bPawnAlive;
+	
+	bool bSprinting;
 };

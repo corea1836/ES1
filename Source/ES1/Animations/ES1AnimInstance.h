@@ -52,7 +52,16 @@ protected:
 	bool bFireTriggerPressed;
 	
 	UPROPERTY(BlueprintReadWrite, Category="ES1|Combat")
-	TMap<FGameplayTag, TObjectPtr<UAnimSequence>> FireBlendAnimation;
+	TMap<FGameplayTag, TObjectPtr<UAnimSequence>> FireAimBlendAnimation;
+	
+	UPROPERTY(BlueprintReadWrite, Category="ES1|Combat")
+	TMap<FGameplayTag, TObjectPtr<UAnimSequence>> FireHipBlendAnimation;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Combat")
+	bool bIsTwoHanded;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="ES1|Combat")
+	bool bUseHipUpper;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Movement Data")
 	EES1MovementGate LastFrameMovementGate;

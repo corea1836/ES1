@@ -11,19 +11,16 @@ struct FES1WeaponAnim
 	GENERATED_BODY()
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TObjectPtr<UAnimMontage> PlayerFireMontage = nullptr;
+	TObjectPtr<UAnimMontage> PlayerFireHipMontage = nullptr;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TObjectPtr<UAnimMontage> PlayerFireAimMontage = nullptr;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> PlayerReloadMontage = nullptr;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
 	TObjectPtr<UAnimMontage> PlayerEquipMontage = nullptr;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TObjectPtr<UAnimationAsset> WeaponFireAnim = nullptr;
-	
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TObjectPtr<UAnimationAsset> WeaponReloadAnim = nullptr;
 };
 
 USTRUCT(BlueprintType)

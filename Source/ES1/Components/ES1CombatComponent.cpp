@@ -389,7 +389,8 @@ void UES1CombatComponent::PlayFireWeapon(const FVector_NetQuantize& TraceHitTarg
 	{
 		RemoteFireFXWaitTIme = 0.f;
 
-		UAnimMontage* PlayerFireMontage = WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).PlayerFireMontage;
+		UAnimMontage* PlayerFireMontage = bAiming ? WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).PlayerFireAimMontage
+		: WeaponData->WeaponAnims.FindChecked(CurrentWeapon->WeaponType).PlayerFireHipMontage;
 		
 		if (IsValid(PlayerFireMontage))
 		{

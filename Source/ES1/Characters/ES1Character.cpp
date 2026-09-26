@@ -137,6 +137,8 @@ void AES1Character::SetupPlayerInputComponent(UInputComponent* PlayerInputCompon
 	EnhancedInputComponent->BindAction(AimWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_Aim_Pressed);
 	EnhancedInputComponent->BindAction(AimWeaponAction, ETriggerEvent::Completed, this, &ThisClass::Input_Aim_Released);
 	EnhancedInputComponent->BindAction(ReloadWeaponAction, ETriggerEvent::Started, this, &ThisClass::Input_ReloadWeapon);
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &ThisClass::Input_Sprint_Pressed);
+	EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &ThisClass::Input_Sprint_Released);
 }
 
 FName AES1Character::GetWeaponEquippedSocket_Implementation(const FGameplayTag& WeaponType) const
@@ -361,6 +363,16 @@ void AES1Character::Input_ReloadWeapon()
 {
 	if (!bPawnAlive) return;
 	CombatComponent->Initiate_ReloadWeapon();
+}
+
+void AES1Character::Input_Sprint_Pressed()
+{
+	if (!bPawnAlive) return;
+}
+
+void AES1Character::Input_Sprint_Released()
+{
+	if (!bPawnAlive) return;
 }
 
 void AES1Character::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)

@@ -125,6 +125,9 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	AimPitch = FRotator::NormalizeAxis(TryGetPawnOwner()->GetBaseAimRotation().Pitch);
 	bFireTriggerPressed = CombatComponent->GetbFireTriggerPressed();
 
+	bIsTwoHanded = CurrentWeaponType != ES1WeaponTags::Weapon_Type_Pistol && CurrentWeaponType != ES1WeaponTags::Weapon_Type_Unarmed;
+	bUseHipUpper = bIsTwoHanded && !CombatComponent->GetIsAiming() && !bCrouching;
+	
 	FString AccelerationString = FString::Printf(TEXT("Acceleration: %s"), *Acceleration2D.ToString());
 	// GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Green, AccelerationString);
 	
