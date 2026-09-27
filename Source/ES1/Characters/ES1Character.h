@@ -168,6 +168,4 @@ private:
 	bool bWeaponFirstReplicated;
 	
 	bool bPawnAlive;
-	
-	bool bSprinting;
 };

@@ -98,6 +98,10 @@ UAnimSequence* UES1LayerAnimInstance::GetCycleAnimForMovementGate() const
 	// default:
 	// 	return GetDirectionalAnim(WalkCycleAnimations, VelocityLocomotionDirection);
 	// }
+	if (MovementGate == EES1MovementGate::Sprinting)
+	{
+		return GetDirectionalAnim(SprintAnimations, VelocityLocomotionDirection);
+	}
 	if (MovementGate == EES1MovementGate::Crouching)
 	{
 		return GetDirectionalAnim(CrouchCycleAnimations, VelocityLocomotionDirection);
@@ -125,6 +129,8 @@ UAnimSequence* UES1LayerAnimInstance::GetStopAnimForMovementGate() const
 		return GetDirectionalAnim(WalkStopAnimations, VelocityLocomotionDirection);
 	case EES1MovementGate::Jogging:
 		return GetDirectionalAnim(JogStopAnimations, VelocityLocomotionDirection);
+	case EES1MovementGate::Sprinting:
+		return GetDirectionalAnim(JogStopAnimations, VelocityLocomotionDirection);
 	case EES1MovementGate::Crouching:
 		return GetDirectionalAnim(CrouchStopAnimations, VelocityLocomotionDirection);
 	default:
@@ -140,6 +146,8 @@ UAnimSequence* UES1LayerAnimInstance::GetStartAnimForMovementGate() const
 		return GetDirectionalAnim(WalkStartAnimations, VelocityLocomotionDirection);
 	case EES1MovementGate::Jogging:
 		return GetDirectionalAnim(JogStartAnimations, VelocityLocomotionDirection);
+	case EES1MovementGate::Sprinting:
+		return GetDirectionalAnim(JogStartAnimations, VelocityLocomotionDirection);
 	case EES1MovementGate::Crouching:
 		return GetDirectionalAnim(CrouchStartAnimations, VelocityLocomotionDirection);
 	default:
@@ -154,6 +162,8 @@ UAnimSequence* UES1LayerAnimInstance::GetPivotAnimForMovementGate() const
 	case EES1MovementGate::Walking:
 		return GetDirectionalAnim(WalkPivotAnimations, AccelerationLocomotionDirection);
 	case EES1MovementGate::Jogging:
+		return GetDirectionalAnim(JogPivotAnimations, AccelerationLocomotionDirection);
+	case EES1MovementGate::Sprinting:
 		return GetDirectionalAnim(JogPivotAnimations, AccelerationLocomotionDirection);
 	case EES1MovementGate::Crouching:
 		return GetDirectionalAnim(CrouchPivotAnimations, AccelerationLocomotionDirection);

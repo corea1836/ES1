@@ -70,7 +70,7 @@ void AES1Character::BeginPlay()
 	GetCharacterMovement()->GetNavAgentPropertiesRef().bCanCrouch = true;
 	
 	FollowCamera->SetFieldOfView(DefaultFieldOfView);
-	AttributeComponent->SwitchGate(EES1MovementGate::Jogging);
+	AttributeComponent->RequestGate(EES1MovementGate::Jogging);
 	
 	if (PlayerOverlayWidgetClass)
 	{
@@ -219,15 +219,18 @@ void AES1Character::LinkAnimLayer()
 	Execute_GetPlayerMesh(this)->LinkAnimClassLayers(AnimLayerClass);
 }
 
-void AES1Character::RefreshMovementGate()
-{
-	EES1MovementGate Gate;
-	if (GetCharacterMovement()->IsCrouching()) Gate = EES1MovementGate::Crouching;
-	else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
-	else Gate = EES1MovementGate::Jogging;
+	void AES1Character::RefreshMovementGate()
+	{
+		if (!IsLocallyControlled()) return; 
 	
-	AttributeComponent->SwitchGate(Gate);
-}
+		EES1MovementGate Gate;
+		if (GetCharacterMovement()->IsCrouching()) Gate = EES1MovementGate::Crouching;
+		else if (CombatComponent->GetIsAiming()) Gate = EES1MovementGate::Walking;
+		else if (AttributeComponent->GetbSprinting()) Gate = EES1MovementGate::Sprinting;
+		else Gate = EES1MovementGate::Jogging;
+		
+		AttributeComponent->RequestGate(Gate);
+	}
 
 void AES1Character::PossessedBy(AController* NewController)
 {
@@ -368,11 +371,15 @@ void AES1Character::Input_ReloadWeapon()
 void AES1Character::Input_Sprint_Pressed()
 {
 	if (!bPawnAlive) return;
+	AttributeComponent->Local_Sprinting(true);
+	RefreshMovementGate();
 }
 
 void AES1Character::Input_Sprint_Released()
 {
 	if (!bPawnAlive) return;
+	AttributeComponent->Local_Sprinting(false);
+	RefreshMovementGate();
 }
 
 void AES1Character::OnStartCrouch(float HalfHeightAdjust, float ScaledHalfHeightAdjust)

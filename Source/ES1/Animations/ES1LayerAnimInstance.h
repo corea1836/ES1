@@ -102,6 +102,9 @@ protected:
 	FES1DirectionalAnimations CrouchStopAnimations;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Locomotion Data")
+	FES1DirectionalAnimations SprintAnimations;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Locomotion Data")
 	FES1DirectionalAnimations WalkStartAnimations;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Locomotion Data")

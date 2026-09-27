@@ -9,6 +9,7 @@ enum class EES1MovementGate : uint8
 	Walking,
 	Jogging,
 	Crouching,
+	Sprinting,
 };
 
 UENUM(BlueprintType)

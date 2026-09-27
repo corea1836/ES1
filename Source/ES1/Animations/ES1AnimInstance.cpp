@@ -126,7 +126,9 @@ void UES1AnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	bFireTriggerPressed = CombatComponent->GetbFireTriggerPressed();
 
 	bIsTwoHanded = CurrentWeaponType != ES1WeaponTags::Weapon_Type_Pistol && CurrentWeaponType != ES1WeaponTags::Weapon_Type_Unarmed;
-	bUseHipUpper = bIsTwoHanded && !CombatComponent->GetIsAiming() && !bCrouching;
+	const bool bIsMoving = Velocity2D.SizeSquared() > FMath::Square(10.f);
+	const bool bEffectSprinting = (CurrentMovementGate == EES1MovementGate::Sprinting) && bIsMoving;
+	bUseHipUpper = bIsTwoHanded && !CombatComponent->GetIsAiming() && !bCrouching && !bEffectSprinting;
 	
 	FString AccelerationString = FString::Printf(TEXT("Acceleration: %s"), *Acceleration2D.ToString());
 	// GEngine->AddOnScreenDebugMessage(3, 5.f, FColor::Green, AccelerationString);

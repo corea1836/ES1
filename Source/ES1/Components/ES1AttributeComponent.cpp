@@ -8,23 +8,20 @@
 UES1AttributeComponent::UES1AttributeComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
+	bSprinting = false;
+	SetIsReplicatedByDefault(true);
 }
 
 void UES1AttributeComponent::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	
-	DOREPLIFETIME(UES1AttributeComponent, CurrentMovementGate);
+	DOREPLIFETIME_CONDITION(UES1AttributeComponent, CurrentMovementGate, COND_SkipOwner);
 }
 
 void UES1AttributeComponent::BeginPlay()
 {
 	Super::BeginPlay();
-}
-
-void UES1AttributeComponent::OnRep_MovementGate()
-{
-	SwitchGate(CurrentMovementGate);
 }
 
 void UES1AttributeComponent::SwitchGate(const EES1MovementGate MovementGate)
@@ -43,6 +40,30 @@ void UES1AttributeComponent::SwitchGate(const EES1MovementGate MovementGate)
 	CMC->BrakingFrictionFactor = GetBrakingFrictionFactor(MovementGate);
 	CMC->BrakingFriction = GetBrakingFriction(MovementGate);
 	CMC->bUseSeparateBrakingFriction = GetbUseSeperateBrakingFriction(MovementGate);
+}
+
+void UES1AttributeComponent::RequestGate(EES1MovementGate NewGate)
+{
+	SwitchGate(NewGate);
+	if (!GetOwner()->HasAuthority())
+	{
+		Server_SwitchGate(NewGate);
+	}
+}
+
+void UES1AttributeComponent::Server_SwitchGate_Implementation(EES1MovementGate NewGate)
+{
+	SwitchGate(NewGate);
+}
+
+void UES1AttributeComponent::OnRep_MovementGate()
+{
+	SwitchGate(CurrentMovementGate);
+}
+
+void UES1AttributeComponent::Local_Sprinting(bool bIsSprinting)
+{
+	bSprinting = bIsSprinting;
 }
 
 void UES1AttributeComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
